@@ -1,0 +1,9 @@
+{
+  "name": "generic-desktop-companion",
+  "productName": "通用桌宠",
+  "version": "0.1.0",
+  "description": "由角色包驱动的桌面伴侣核心",
+  "main": "main.js",
+  "packageManager": "pnpm@11.19.0",
+  "license": "MIT"
+}

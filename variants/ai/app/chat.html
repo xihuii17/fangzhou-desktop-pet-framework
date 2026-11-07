@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>角色对话</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #263236; background: #f4f6f7; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { width: 100%; height: 100%; }
+    body { display: grid; min-width: 380px; grid-template-rows: 72px 43px minmax(0, 1fr); margin: 0; overflow: hidden; background: #f4f6f7; letter-spacing: 0; }
+    button, input, textarea { font: inherit; }
+    header { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 16px; border-bottom: 1px solid #dce2e4; background: #fff; }
+    #avatar { width: 50px; height: 50px; flex: 0 0 50px; object-fit: contain; }
+    .identity { min-width: 0; flex: 1; }
+    h1 { overflow: hidden; margin: 0; font-size: 16px; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+    #connection-status { overflow: hidden; color: #718084; font-size: 11px; line-height: 17px; text-overflow: ellipsis; white-space: nowrap; }
+    #connection-status.ready { color: #267d78; }
+    #connection-status.error { color: #a65845; }
+    .header-actions { display: flex; gap: 4px; }
+    .icon-button { display: grid; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 5px; place-items: center; color: #526065; background: transparent; font-size: 17px; cursor: pointer; }
+    .icon-button:hover { background: #edf1f2; }
+
+    #tabs { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 12px; border-bottom: 1px solid #dce2e4; background: #fff; }
+    .tab { position: relative; min-width: 0; border: 0; color: #68767a; background: transparent; font-size: 12px; cursor: pointer; }
+    .tab.active { color: #1f716d; font-weight: 650; }
+    .tab.active::after { content: ""; position: absolute; right: 20%; bottom: -1px; left: 20%; height: 2px; background: #287f7a; }
+    #memory-tab-count { margin-left: 4px; color: #267f7a; font-size: 10px; }
+    #workspace { min-height: 0; }
+    .panel { width: 100%; height: 100%; min-height: 0; }
+
+    #chat-panel { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+    #chat-main { display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+    #setup-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 16px; border-bottom: 1px solid #ead9ca; color: #6d4e3e; background: #fff8f1; font-size: 12px; line-height: 18px; }
+    .text-button { min-height: 30px; flex: 0 0 auto; padding: 0 11px; border: 1px solid #c8d1d3; border-radius: 5px; color: #2c393d; background: #fff; font-size: 12px; cursor: pointer; }
+    .text-button:hover { border-color: #9caaad; }
+    .text-button.primary { border-color: #267f7a; color: #fff; background: #267f7a; }
+    .text-button.danger { color: #a44f43; }
+    .text-button:disabled { cursor: default; opacity: 0.5; }
+
+    #messages { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 20px 18px 24px; scroll-behavior: smooth; }
+    #empty-state { display: grid; min-height: 100%; align-content: center; justify-items: center; gap: 10px; padding: 28px; color: #7d898d; text-align: center; }
+    #empty-avatar { width: 76px; height: 76px; object-fit: contain; opacity: 0.92; }
+    #empty-state strong { color: #405055; font-size: 15px; }
+    #empty-state span { font-size: 12px; }
+    .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 4px; }
+    .suggestion { min-height: 30px; padding: 0 10px; border: 1px solid #d1dadd; border-radius: 5px; color: #506065; background: #fff; font-size: 11px; cursor: pointer; }
+    .message-row { display: flex; width: 100%; margin: 0 0 14px; }
+    .message-row.user { justify-content: flex-end; }
+    .message-row.assistant { justify-content: flex-start; }
+    .message { max-width: min(82%, 380px); padding: 10px 13px; border-radius: 7px; font-size: 14px; line-height: 21px; overflow-wrap: anywhere; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+    .user .message { color: #fff; background: #267f7a; border-bottom-right-radius: 2px; }
+    .assistant .message { border: 1px solid #dce2e4; color: #2b373b; background: #fff; border-bottom-left-radius: 2px; }
+    .assistant.pending .message { color: #829094; }
+    .assistant.error .message { color: #9a4f3d; border-color: #ebd4ce; background: #fffafa; }
+    .message-row.notice { justify-content: center; }
+    .notice .message { max-width: 92%; padding: 5px 9px; border: 0; color: #657377; background: #e8eeee; font-size: 11px; line-height: 17px; }
+    #chat-footer { padding: 10px 12px 12px; border-top: 1px solid #dce2e4; background: #fff; }
+    #chat-form { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 8px; align-items: end; }
+    #message-input { width: 100%; min-height: 42px; max-height: 110px; resize: none; padding: 9px 11px; border: 1px solid #cbd4d6; border-radius: 6px; outline: 0; color: #283438; background: #fff; font-size: 14px; line-height: 21px; }
+    #message-input:focus { border-color: #4c9d98; box-shadow: 0 0 0 2px rgba(56, 145, 139, 0.13); }
+    #message-input:disabled { background: #f0f3f4; }
+    #send-button { display: grid; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 6px; place-items: center; color: #fff; background: #267f7a; font-size: 20px; cursor: pointer; }
+    #send-button:disabled { cursor: wait; opacity: 0.5; }
+    #stop-button { width: 42px; height: 42px; padding: 0; border: 1px solid #b9c9c7; border-radius: 6px; color: #345e5a; background: #edf5f3; font-size: 18px; cursor: pointer; }
+    #stop-button:disabled { opacity: .55; cursor: wait; }
+    .assistant.cancelled .message { color: #718084; background: #f4f6f7; }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 10px 18px; border-bottom: 1px solid #dce2e4; background: #fff; }
+    .section-head h2 { margin: 0; font-size: 16px; line-height: 22px; }
+    .section-head p { margin: 2px 0 0; color: #758286; font-size: 11px; line-height: 16px; }
+    #memory-panel { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; background: #f7f9f9; }
+    .memory-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 18px; border-bottom: 1px solid #e0e5e7; background: #fff; }
+    .control-copy strong { display: block; font-size: 13px; line-height: 18px; }
+    .control-copy span { display: block; color: #7b878a; font-size: 10px; line-height: 15px; }
+    .switch { position: relative; width: 38px; height: 22px; }
+    .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .switch-track { position: absolute; inset: 0; border: 1px solid #bdc5c8; border-radius: 11px; background: #cbd1d3; cursor: pointer; }
+    .switch-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(22, 31, 33, 0.25); transition: transform 150ms ease; }
+    .switch input:checked + .switch-track { border-color: #217f7b; background: #217f7b; }
+    .switch input:checked + .switch-track::after { transform: translateX(16px); }
+    #memory-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 12px 18px; border-bottom: 1px solid #dce2e4; }
+    #memory-input, .memory-edit, .persona-field { width: 100%; min-width: 0; border: 1px solid #cbd4d6; border-radius: 5px; outline: 0; color: #283438; background: #fff; }
+    #memory-input, .memory-edit { height: 36px; padding: 0 10px; font-size: 13px; }
+    #memory-input:focus, .memory-edit:focus, .persona-field:focus { border-color: #4c9d98; box-shadow: 0 0 0 2px rgba(56, 145, 139, 0.13); }
+    #memory-list { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 0 18px; }
+    .memory-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; gap: 6px; align-items: center; min-height: 62px; border-bottom: 1px solid #e0e5e7; }
+    .memory-content { min-width: 0; }
+    .memory-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: #849094; font-size: 10px; }
+    .source-tag { padding: 1px 5px; border-radius: 3px; color: #516f6d; background: #e4efee; }
+    .source-tag.inferred { color: #6d6048; background: #f1eadb; }
+    .memory-icon-button { display: grid; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 5px; place-items: center; color: #526065; background: transparent; cursor: pointer; }
+    .memory-icon-button:hover { background: #e8edef; }
+    .memory-icon-button.danger { color: #a44f43; }
+    #memory-empty { padding: 54px 12px; color: #879397; font-size: 13px; line-height: 20px; text-align: center; }
+    .memory-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 18px; border-top: 1px solid #dce2e4; background: #fff; }
+    #memory-status { overflow: hidden; color: #6f7c80; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
+    #persona-panel { overflow-x: hidden; overflow-y: auto; background: #f7f9f9; }
+    #default-persona { border-bottom: 1px solid #dce2e4; background: #fff; }
+    .default-persona-title { display: flex; min-height: 48px; padding: 8px 18px; align-items: center; justify-content: space-between; gap: 12px; color: #287b76; font-size: 12px; font-weight: 650; }
+    #default-persona.is-disabled #default-persona-form { opacity: 0.5; }
+    .default-persona-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 8px 18px; border-top: 1px solid #edf0f1; }
+    .default-persona-row strong { color: #657277; font-size: 11px; line-height: 18px; }
+    .default-persona-field { width: 100%; min-height: 64px; resize: vertical; padding: 7px 9px; border: 1px solid #d4dcde; border-radius: 5px; outline: 0; color: #354348; background: #fbfcfc; font-size: 11px; line-height: 18px; }
+    .default-persona-field:focus { border-color: #4c9d98; box-shadow: 0 0 0 2px rgba(56, 145, 139, 0.13); background: #fff; }
+    .default-persona-actions { display: flex; min-height: 54px; padding: 8px 18px; border-top: 1px solid #edf0f1; align-items: center; justify-content: space-between; gap: 10px; }
+    #default-persona-status { color: #287b76; font-size: 11px; }
+    .custom-persona-title { padding: 15px 18px 0; color: #657277; font-size: 12px; font-weight: 650; }
+    #persona-form { padding: 2px 18px 18px; }
+    .persona-group { padding: 14px 0; border-bottom: 1px solid #dfe5e7; }
+    .persona-group:last-of-type { border-bottom: 0; }
+    .persona-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 650; }
+    .persona-group small { display: block; margin-bottom: 7px; color: #7a878a; font-size: 10px; line-height: 15px; }
+    .persona-field { min-height: 66px; resize: vertical; padding: 8px 10px; font-size: 12px; line-height: 18px; }
+    .persona-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 16px; }
+    #persona-status { color: #287b76; font-size: 11px; }
+    @media (max-width: 440px) { .section-head p, .control-copy span { display: none; } .memory-row { grid-template-columns: minmax(0, 1fr) 30px 30px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <img id="avatar" alt="角色头像">
+    <div class="identity"><h1 id="character-name">角色对话</h1><div id="connection-status">正在检查连接…</div></div>
+    <div class="header-actions">
+      <button class="icon-button" id="clear-button" type="button" title="清空最近对话" aria-label="清空最近对话">⌫</button>
+      <button class="icon-button" id="settings-button" type="button" title="连接设置" aria-label="连接设置">⚙</button>
+    </div>
+  </header>
+  <nav id="tabs" aria-label="AI 功能">
+    <button class="tab active" type="button" data-panel="chat-panel">对话</button>
+    <button class="tab" type="button" data-panel="memory-panel">记忆<span id="memory-tab-count"></span></button>
+    <button class="tab" type="button" data-panel="persona-panel">角色设定</button>
+  </nav>
+
+  <main id="workspace">
+    <section class="panel" id="chat-panel">
+      <div id="chat-main">
+        <div id="setup-banner" hidden><span id="setup-message">请先完成 DeepSeek 设置。</span><button class="text-button" id="open-settings" type="button">打开设置</button></div>
+        <div id="messages" aria-live="polite">
+          <div id="empty-state">
+            <img id="empty-avatar" alt=""><strong>今天想聊点什么？</strong><span>她会在这里认真听你说。</span>
+            <div class="suggestions"><button class="suggestion" type="button">今天有点累</button><button class="suggestion" type="button">陪我聊一会儿</button><button class="suggestion" type="button">给我一点鼓励</button></div>
+          </div>
+        </div>
+      </div>
+      <footer id="chat-footer"><form id="chat-form"><textarea id="message-input" rows="1" maxlength="500" placeholder="和她说点什么…" aria-label="对话内容"></textarea><button id="send-button" type="submit" title="发送" aria-label="发送">↑</button><button id="stop-button" type="button" title="停止回复" aria-label="停止回复" hidden>■</button></form></footer>
+    </section>
+
+    <section class="panel" id="memory-panel" hidden>
+      <div class="section-head"><div><h2>她记住的你</h2><p>手动记忆和对话中发现的偏好都在这里</p></div></div>
+      <div>
+        <div class="memory-controls"><div class="control-copy"><strong>使用长期记忆</strong><span>关闭后保留内容，但不用于对话</span></div><label class="switch"><input id="long-memory-toggle" type="checkbox"><span class="switch-track"></span></label></div>
+        <div class="memory-controls"><div class="control-copy"><strong>从对话整理偏好</strong><span>额外调用 AI 整理喜好；可随时关闭和删除</span></div><label class="switch"><input id="auto-learn-toggle" type="checkbox"><span class="switch-track"></span></label></div>
+      </div>
+      <form id="memory-form"><input id="memory-input" type="text" maxlength="160" placeholder="添加一件希望她记住的事" aria-label="新的长期记忆"><button class="text-button primary" id="memory-add" type="submit">添加</button></form>
+      <div id="memory-list"><div id="memory-empty">还没有记忆。<br>聊久一点，她会慢慢了解你的偏好。</div></div>
+      <div class="memory-footer"><span id="memory-status">最多保存 50 条，仅保存在本机</span><button class="text-button danger" id="memory-clear-all" type="button">全部清空</button></div>
+    </section>
+
+    <section class="panel" id="persona-panel" hidden>
+      <div class="section-head"><div><h2>角色性格</h2><p>默认设定和用户补充都可以自行调整</p></div></div>
+      <div id="default-persona">
+        <div class="default-persona-title"><span>使用角色包默认设定</span><label class="switch"><input id="default-persona-toggle" type="checkbox"><span class="switch-track"></span></label></div>
+        <form id="default-persona-form">
+          <div class="default-persona-row"><strong>角色身份</strong><textarea class="default-persona-field" id="default-identity" maxlength="1200"></textarea></div>
+          <div class="default-persona-row"><strong>核心性格</strong><textarea class="default-persona-field" id="default-personality" maxlength="1200"></textarea></div>
+          <div class="default-persona-row"><strong>对管理员</strong><textarea class="default-persona-field" id="default-relationship" maxlength="1200"></textarea></div>
+          <div class="default-persona-row"><strong>说话状态</strong><textarea class="default-persona-field" id="default-speaking" maxlength="1200"></textarea></div>
+          <div class="default-persona-row"><strong>原作知识</strong><textarea class="default-persona-field" id="default-knowledge" maxlength="1200" placeholder="每行填写一条角色知道的事实"></textarea></div>
+          <div class="default-persona-actions"><span id="default-persona-status">修改仅保存在本机</span><div><button class="text-button danger" id="default-persona-reset" type="button">恢复原文</button> <button class="text-button primary" id="default-persona-save" type="submit">保存默认设定</button></div></div>
+        </form>
+      </div>
+      <div class="custom-persona-title">我的补充设定</div>
+      <form id="persona-form">
+        <div class="persona-group"><label for="persona-personality">角色性格</label><small>例如：温柔沉稳，观察细致，关心人但不会过度热情。</small><textarea class="persona-field" id="persona-personality" maxlength="1200"></textarea></div>
+        <div class="persona-group"><label for="persona-relationship">相处方式</label><small>例如：像熟悉的朋友一样陪伴，尊重我的决定，不替我做主。</small><textarea class="persona-field" id="persona-relationship" maxlength="1200"></textarea></div>
+        <div class="persona-group"><label for="persona-speaking">说话方式</label><small>例如：回答简短自然，少用列表，偶尔开一点轻松的玩笑。</small><textarea class="persona-field" id="persona-speaking" maxlength="1200"></textarea></div>
+        <div class="persona-group"><label for="persona-extra">补充设定</label><small>填写你希望长期生效的场景、称呼或互动规则。</small><textarea class="persona-field" id="persona-extra" maxlength="1200"></textarea></div>
+        <div class="persona-actions"><span id="persona-status"></span><div><button class="text-button danger" id="persona-reset" type="button">恢复默认</button> <button class="text-button primary" id="persona-save" type="submit">保存设定</button></div></div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const avatar = document.getElementById('avatar');
+    const emptyAvatar = document.getElementById('empty-avatar');
+    const characterName = document.getElementById('character-name');
+    const connectionStatus = document.getElementById('connection-status');
+    const setupBanner = document.getElementById('setup-banner');
+    const setupMessage = document.getElementById('setup-message');
+    const messages = document.getElementById('messages');
+    const emptyState = document.getElementById('empty-state');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const stopButton = document.getElementById('stop-button');
+    const memoryList = document.getElementById('memory-list');
+    const memoryEmpty = document.getElementById('memory-empty');
+    const memoryInput = document.getElementById('memory-input');
+    const memoryAddButton = document.getElementById('memory-add');
+    const memoryTabCount = document.getElementById('memory-tab-count');
+    const memoryStatus = document.getElementById('memory-status');
+    const longMemoryToggle = document.getElementById('long-memory-toggle');
+    const autoLearnToggle = document.getElementById('auto-learn-toggle');
+    const defaultPersonaToggle = document.getElementById('default-persona-toggle');
+    const defaultPersonaFields = { identity: document.getElementById('default-identity'), personality: document.getElementById('default-personality'), relationship: document.getElementById('default-relationship'), speakingStyle: document.getElementById('default-speaking'), knowledge: document.getElementById('default-knowledge') };
+    const personaFields = { personality: document.getElementById('persona-personality'), relationship: document.getElementById('persona-relationship'), speakingStyle: document.getElementById('persona-speaking'), extra: document.getElementById('persona-extra') };
+    let config = null;
+    let aiStatus = null;
+    let longTermMemories = [];
+    let personaState = { defaults: {}, custom: {} };
+    let busy = false;
+    let memoryBusy = false;
+    let viewGeneration = 0;
+
+    function readyToChat() { return Boolean(config?.aiChatEnabled && aiStatus?.configured); }
+    function showPanel(id) {
+      document.querySelectorAll('.panel').forEach((panel) => { panel.hidden = panel.id !== id; });
+      document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.panel === id));
+      if (id === 'chat-panel' && readyToChat()) input.focus();
+      if (id === 'memory-panel') refreshLongTermMemories();
+    }
+    function renderConnection() {
+      const ready = readyToChat();
+      connectionStatus.className = ready && !aiStatus?.error ? 'ready' : 'error';
+      const working = busy || Boolean(aiStatus?.busy);
+      connectionStatus.textContent = aiStatus?.error || (ready ? (working ? '正在回复…可以随时停止' : `已配置 · ${aiStatus.model || 'DeepSeek'}`) : (aiStatus?.configured ? 'AI 对话尚未开启' : 'DeepSeek 尚未配置'));
+      setupBanner.hidden = ready;
+      setupMessage.textContent = aiStatus?.configured ? '请在设置中开启 DeepSeek 对话。' : '请先填写 DeepSeek API Key 并开启对话。';
+      input.disabled = !ready;
+      sendButton.disabled = !ready || working;
+      sendButton.hidden = working;
+      stopButton.hidden = !working;
+    }
+    function scrollToLatest() { window.requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; }); }
+    function addMessage(role, content, state = '') {
+      emptyState.hidden = true;
+      const row = document.createElement('div'); row.className = `message-row ${role} ${state}`.trim();
+      const bubble = document.createElement('div'); bubble.className = 'message'; bubble.textContent = content;
+      row.appendChild(bubble); messages.appendChild(row); scrollToLatest(); return { row, bubble };
+    }
+    function clearRenderedMessages() { messages.querySelectorAll('.message-row').forEach((node) => node.remove()); emptyState.hidden = false; }
+    function resizeInput() { input.style.height = 'auto'; input.style.height = `${Math.min(110, input.scrollHeight)}px`; }
+    function setMemoryStatus(text, error = false) { memoryStatus.textContent = text; memoryStatus.style.color = error ? '#a44f43' : '#6f7c80'; }
+    function sourceLabel(item) { if (item.source === 'inferred') return '对话中发现'; if (item.source === 'explicit') return '聊天时记住'; return '手动添加'; }
+
+    function renderMemories() {
+      memoryList.querySelectorAll('.memory-row').forEach((node) => node.remove());
+      memoryEmpty.hidden = longTermMemories.length > 0;
+      memoryTabCount.textContent = longTermMemories.length ? `· ${longTermMemories.length}` : '';
+      longMemoryToggle.checked = config?.aiLongTermMemoryEnabled !== false;
+      autoLearnToggle.checked = config?.aiAutoLearnEnabled === true;
+      autoLearnToggle.disabled = !longMemoryToggle.checked;
+      memoryInput.disabled = !longMemoryToggle.checked || memoryBusy;
+      memoryAddButton.disabled = !longMemoryToggle.checked || memoryBusy;
+      for (const item of longTermMemories) {
+        const row = document.createElement('div'); row.className = 'memory-row';
+        const content = document.createElement('div'); content.className = 'memory-content';
+        const editor = document.createElement('input'); editor.className = 'memory-edit'; editor.type = 'text'; editor.maxLength = 160; editor.value = item.content; editor.disabled = !longMemoryToggle.checked || memoryBusy;
+        const meta = document.createElement('div'); meta.className = 'memory-meta';
+        const source = document.createElement('span'); source.className = `source-tag ${item.source === 'inferred' ? 'inferred' : ''}`; source.textContent = sourceLabel(item);
+        const category = document.createElement('span'); category.textContent = item.category || '其他'; meta.append(source, category); content.append(editor, meta);
+        const saveButton = document.createElement('button'); saveButton.className = 'memory-icon-button'; saveButton.type = 'button'; saveButton.title = '保存修改'; saveButton.textContent = '✓'; saveButton.disabled = !longMemoryToggle.checked || memoryBusy;
+        saveButton.addEventListener('click', async () => {
+          memoryBusy = true; renderMemories();
+          try { const result = await window.companionAPI.updateAILongTermMemory(item.id, editor.value); if (result.ok) { longTermMemories = result.items; setMemoryStatus('修改已保存'); } else setMemoryStatus(result.error || '无法保存修改', true); }
+          catch (_error) { setMemoryStatus('修改失败，请重试', true); }
+          finally { memoryBusy = false; renderMemories(); }
+        });
+        const deleteButton = document.createElement('button'); deleteButton.className = 'memory-icon-button danger'; deleteButton.type = 'button'; deleteButton.title = '删除'; deleteButton.textContent = '⌫'; deleteButton.disabled = memoryBusy;
+        deleteButton.addEventListener('click', async () => {
+          try { const result = await window.companionAPI.deleteAILongTermMemory(item.id); if (result.ok) longTermMemories = result.items || []; setMemoryStatus(result.ok ? '这条记忆已删除' : (result.error || '删除失败'), !result.ok); renderMemories(); }
+          catch (_error) { setMemoryStatus('删除失败，请重试', true); }
+        });
+        row.append(content, saveButton, deleteButton); memoryList.appendChild(row);
+      }
+    }
+    async function refreshLongTermMemories() {
+      try { longTermMemories = await window.companionAPI.getAILongTermMemories(); renderMemories(); }
+      catch (_error) { setMemoryStatus('记忆读取失败，原文件已保留', true); }
+    }
+    function renderPersona(persona) {
+      personaState = persona || personaState;
+      const defaults = persona?.defaults || {};
+      const custom = persona?.custom || persona || {};
+      for (const [key, field] of Object.entries(defaultPersonaFields)) field.value = defaults[key] || '';
+      for (const [key, field] of Object.entries(personaFields)) field.value = custom[key] || '';
+      defaultPersonaToggle.checked = config?.aiDefaultPersonaEnabled !== false;
+      document.getElementById('default-persona').classList.toggle('is-disabled', !defaultPersonaToggle.checked);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); const text = input.value.trim(); if (!text || busy || aiStatus?.busy || !readyToChat()) return;
+      const generation = viewGeneration;
+      busy = true; addMessage('user', text); input.value = ''; resizeInput(); const pending = addMessage('assistant', '正在回复…', 'pending'); renderConnection();
+      try {
+        const result = await window.companionAPI.sendAIMessage(text);
+        if (generation !== viewGeneration) return;
+        if (result.ok) {
+          pending.bubble.textContent = result.reply;
+          if (result.remembered) { await refreshLongTermMemories(); if (generation === viewGeneration) addMessage('notice', `${result.remembered.duplicate ? '已经记得' : '已记住'}：${result.remembered.content}`, 'notice'); }
+        } else {
+          pending.row.classList.add(result.cancelled ? 'cancelled' : 'error');
+          pending.bubble.textContent = result.cancelled ? '已停止回复' : (result.error || '暂时没有收到回复，请稍后再试。');
+          if (!result.cancelled && !input.value) { input.value = text; resizeInput(); }
+        }
+      } catch (_error) {
+        if (generation === viewGeneration) { pending.row.classList.add('error'); pending.bubble.textContent = '对话暂时中断，请重试。'; if (!input.value) { input.value = text; resizeInput(); } }
+      } finally {
+        busy = false; stopButton.disabled = false; pending.row.classList.remove('pending');
+        try { aiStatus = await window.companionAPI.getAIStatus(); } catch (_error) {}
+        renderConnection(); input.focus(); scrollToLatest();
+      }
+    });
+    stopButton.addEventListener('click', async () => {
+      stopButton.disabled = true;
+      try { await window.companionAPI.cancelAIMessage(); }
+      catch (_error) { connectionStatus.textContent = '停止失败，请稍后重试'; }
+      finally { stopButton.disabled = false; }
+    });
+    input.addEventListener('input', resizeInput);
+    input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); form.requestSubmit(); } });
+    document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => showPanel(tab.dataset.panel)));
+    document.querySelectorAll('.suggestion').forEach((button) => button.addEventListener('click', () => { input.value = button.textContent; resizeInput(); form.requestSubmit(); }));
+    longMemoryToggle.addEventListener('change', async () => { config = await window.companionAPI.saveConfig({ aiLongTermMemoryEnabled: longMemoryToggle.checked }); renderMemories(); });
+    autoLearnToggle.addEventListener('change', async () => { config = await window.companionAPI.saveConfig({ aiAutoLearnEnabled: autoLearnToggle.checked }); renderMemories(); });
+    defaultPersonaToggle.addEventListener('change', async () => {
+      config = await window.companionAPI.saveConfig({ aiDefaultPersonaEnabled: defaultPersonaToggle.checked });
+      renderPersona(await window.companionAPI.getAIPersona());
+      const label = document.getElementById('persona-status');
+      label.textContent = defaultPersonaToggle.checked ? '默认设定已开启' : '默认设定已关闭';
+      window.setTimeout(() => { label.textContent = ''; }, 1800);
+    });
+    document.getElementById('default-persona-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = Object.fromEntries(Object.entries(defaultPersonaFields).map(([key, field]) => [key, field.value]));
+      const result = await window.companionAPI.saveAIDefaultPersona(payload);
+      const label = document.getElementById('default-persona-status');
+      label.textContent = result.ok ? '默认设定已保存' : (result.error || '保存失败');
+      if (result.ok) renderPersona(result.persona);
+      window.setTimeout(() => { label.textContent = '修改仅保存在本机'; }, 1800);
+    });
+    document.getElementById('default-persona-reset').addEventListener('click', async () => {
+      if (!window.confirm('恢复角色包原本的默认设定？本机修改会被清除。')) return;
+      const result = await window.companionAPI.resetAIDefaultPersona();
+      if (result.ok) renderPersona(result.persona);
+      const label = document.getElementById('default-persona-status');
+      label.textContent = result.ok ? '已恢复角色包原文' : (result.error || '恢复失败');
+      window.setTimeout(() => { label.textContent = '修改仅保存在本机'; }, 1800);
+    });
+    document.getElementById('memory-form').addEventListener('submit', async (event) => {
+      event.preventDefault(); const content = memoryInput.value.trim(); if (!content || memoryBusy || !longMemoryToggle.checked) return;
+      memoryBusy = true; renderMemories();
+      try { const result = await window.companionAPI.addAILongTermMemory(content);
+        if (result.ok) { longTermMemories = result.items; memoryInput.value = ''; setMemoryStatus(result.item?.duplicate ? '这件事已经记住了' : '已经记住了'); } else setMemoryStatus(result.error || '无法添加记忆', true);
+      } catch (_error) { setMemoryStatus('添加失败，请重试', true); }
+      finally { memoryBusy = false; renderMemories(); }
+    });
+    document.getElementById('memory-clear-all').addEventListener('click', async () => {
+      if (!window.confirm('清空她记住的全部事情？最近对话不会受影响。')) return;
+      try { const result = await window.companionAPI.clearAILongTermMemories(); if (result.ok) { longTermMemories = result.items || []; setMemoryStatus('长期记忆已全部清空'); renderMemories(); } else setMemoryStatus(result.error || '清空失败', true); }
+      catch (_error) { setMemoryStatus('清空失败，原记录未改动', true); }
+    });
+    document.getElementById('persona-form').addEventListener('submit', async (event) => {
+      event.preventDefault(); const payload = Object.fromEntries(Object.entries(personaFields).map(([key, field]) => [key, field.value])); const result = await window.companionAPI.saveAIPersona(payload); const label = document.getElementById('persona-status'); label.textContent = result.ok ? '设定已保存' : (result.error || '保存失败'); if (result.ok) renderPersona(result.persona); window.setTimeout(() => { label.textContent = ''; }, 1800);
+    });
+    document.getElementById('persona-reset').addEventListener('click', async () => { if (!window.confirm('清空我的全部补充设定？')) return; const result = await window.companionAPI.resetAIPersona(); renderPersona(result.persona); document.getElementById('persona-status').textContent = '补充设定已清空'; });
+    document.getElementById('settings-button').addEventListener('click', () => window.companionAPI.openSettings('ai'));
+    document.getElementById('open-settings').addEventListener('click', () => window.companionAPI.openSettings('ai'));
+    document.getElementById('clear-button').addEventListener('click', async () => {
+      if (!window.confirm('清空本机保存的最近对话？正在进行的回复会停止，长期记忆保留。')) return;
+      try { const result = await window.companionAPI.clearAIMemory(); if (result.ok) { viewGeneration += 1; clearRenderedMessages(); } else connectionStatus.textContent = result.error || '清空失败，原记录未改动'; }
+      catch (_error) { connectionStatus.textContent = '清空失败，原记录未改动'; }
+    });
+    window.companionAPI.onAIStatusChanged((status) => { aiStatus = status; renderConnection(); });
+    window.companionAPI.onConfigChanged((nextConfig) => { config = nextConfig; renderMemories(); renderPersona(personaState); renderConnection(); });
+    window.companionAPI.onAIMemoriesLearned(async (items) => { await refreshLongTermMemories(); const content = items.map((item) => item.content).join('；'); addMessage('notice', `从对话中记住：${content}`, 'notice'); });
+    const readRecord = promise => promise.then(value => ({ value })).catch(() => ({ failed: true, value: [] }));
+    Promise.all([window.companionAPI.getCharacter(), window.companionAPI.getConfig(), window.companionAPI.getAIStatus(), readRecord(window.companionAPI.getAIHistory()), readRecord(window.companionAPI.getAILongTermMemories()), window.companionAPI.getAIPersona()]).then(([character, initialConfig, initialStatus, history, memories, persona]) => {
+      document.title = `和${character.name}说话`; characterName.textContent = character.name; avatar.alt = character.name;
+      if (character.idleMediaUrl) { avatar.src = character.idleMediaUrl; emptyAvatar.src = character.idleMediaUrl; }
+      config = initialConfig; aiStatus = initialStatus; longTermMemories = memories.value; renderPersona(persona);
+      if (initialConfig.aiMemoryEnabled) for (const item of history.value) addMessage(item.role, item.content);
+      renderConnection(); renderMemories(); if (readyToChat()) input.focus();
+      if (history.failed) addMessage('notice', '最近对话读取失败，原文件已保留。可关闭“保留最近对话”后继续，或明确清空记录。', 'notice');
+      if (memories.failed) { setMemoryStatus('记忆读取失败，原文件已保留；可关闭使用或清空记录', true); addMessage('notice', '长期记忆读取失败，原文件已保留。请在记忆页处理后继续。', 'notice'); }
+    }).catch(() => { connectionStatus.textContent = '记录或设置读取失败，请检查连接设置；原文件已保留'; connectionStatus.className = 'error'; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+node_modules/
+.stage/
+build/
+dist/
+.DS_Store
+.env
+.env.*
+*.key
+*.pem
+*.log

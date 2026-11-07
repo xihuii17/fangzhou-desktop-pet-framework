@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>动作商店</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #273234;
+      background: #f3f5f4;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    button { font: inherit; }
+
+    body {
+      min-width: 720px;
+      margin: 0;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(237, 198, 124, 0.16), transparent 28%),
+        linear-gradient(180deg, #f8faf8 0, #f1f3f2 320px);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 26px 34px 20px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 25px; line-height: 34px; font-weight: 720; letter-spacing: 0.02em; }
+    h2 { font-size: 16px; line-height: 24px; font-weight: 700; }
+    h3 { font-size: 14px; line-height: 20px; font-weight: 680; }
+
+    .header-actions {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .notice-button {
+      display: inline-flex;
+      min-height: 43px;
+      align-items: center;
+      gap: 7px;
+      padding: 0 14px;
+      border: 1px solid #d8dfdc;
+      border-radius: 12px;
+      color: #5d6966;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 7px 22px rgba(40, 54, 49, 0.05);
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .notice-button:hover { border-color: #b9c8c3; background: #fff; }
+
+    .notice-mark {
+      display: grid;
+      width: 21px;
+      height: 21px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: #6e948b;
+      font-size: 11px;
+    }
+
+    .notice-popover {
+      position: absolute;
+      z-index: 12;
+      top: calc(100% + 9px);
+      right: 0;
+      width: min(330px, calc(100vw - 48px));
+      padding: 17px;
+      border: 1px solid #dce3e0;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 16px 40px rgba(31, 45, 41, 0.14);
+    }
+
+    .notice-popover h3 { margin-bottom: 7px; }
+    .notice-popover p { color: #73807c; font-size: 12px; line-height: 20px; }
+
+    .points-pill {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 148px;
+      padding: 11px 15px;
+      border: 1px solid rgba(168, 125, 64, 0.26);
+      border-radius: 14px;
+      background: rgba(255, 252, 244, 0.9);
+      box-shadow: 0 7px 22px rgba(65, 52, 31, 0.07);
+    }
+
+    .points-symbol {
+      display: grid;
+      width: 31px;
+      height: 31px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff7df;
+      background: linear-gradient(145deg, #d9aa59, #a87535);
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
+    }
+
+    .points-copy { display: grid; }
+    .points-label { color: #8a744f; font-size: 10px; line-height: 14px; }
+    #points { color: #564323; font-size: 21px; line-height: 24px; font-weight: 760; font-variant-numeric: tabular-nums; }
+
+    main { display: grid; gap: 18px; padding: 0 34px 34px; }
+
+    .overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(210px, .65fr);
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid #dfe4e1;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 9px 28px rgba(40, 54, 49, 0.055);
+    }
+
+    .level-panel { padding: 20px; }
+    .level-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .level-name { color: #334541; font-size: 20px; line-height: 28px; font-weight: 720; }
+    .level-value { color: #77908a; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    .progress {
+      height: 9px;
+      margin-top: 13px;
+      overflow: hidden;
+      border-radius: 5px;
+      background: #e6ece9;
+    }
+
+    .progress > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #71a397, #4f8379);
+      transition: width 240ms ease;
+    }
+
+    .level-caption { margin-right: 7px; color: #82918d; font-size: 12px; font-weight: 620; }
+
+    .total-companion {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 13px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0ee;
+      color: #7b8583;
+      font-size: 11px;
+    }
+
+    #total-companion-time {
+      color: #526762;
+      font-size: 13px;
+      font-weight: 680;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .time-panel { display: grid; align-content: center; gap: 4px; padding: 20px; }
+    .time-title { color: #7b8583; font-size: 11px; }
+    #active-time { color: #3b4e4a; font-size: 23px; line-height: 30px; font-weight: 720; font-variant-numeric: tabular-nums; }
+    .time-note { color: #87908e; font-size: 11px; line-height: 17px; }
+
+    .shop-panel { padding: 20px; }
+    .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+    .section-note { color: #818b89; font-size: 11px; line-height: 17px; }
+
+    .blind-box {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 17px;
+      padding: 15px;
+      border: 1px solid #eadfc9;
+      border-radius: 13px;
+      background: linear-gradient(120deg, #fffaf0, #fbf7ee);
+    }
+
+    .box-art {
+      display: grid;
+      width: 66px;
+      height: 66px;
+      place-items: center;
+      border: 1px solid #dbc9a7;
+      border-radius: 15px;
+      color: #a1783f;
+      background: #fffdf8;
+      font-size: 30px;
+      transform: rotate(-2deg);
+    }
+
+    .box-copy { display: grid; gap: 5px; }
+    .box-copy p { color: #7a756a; font-size: 12px; line-height: 18px; }
+    .coupon-line { color: #a07944 !important; }
+
+    .primary-button, .buy-button, .gift-button {
+      border: 0;
+      border-radius: 9px;
+      color: #fff;
+      background: #4f8379;
+      cursor: pointer;
+      transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+    }
+
+    .primary-button { min-width: 128px; padding: 11px 15px; font-size: 13px; font-weight: 680; }
+    .primary-button:hover, .buy-button:hover, .gift-button:hover { background: #426f67; }
+    .primary-button:active, .buy-button:active, .gift-button:active { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: default; transform: none !important; }
+
+    .gifts { display: grid; gap: 10px; }
+    .gifts .section-heading { align-items: center; flex-wrap: wrap; }
+    .gift-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .gift-strip { display: flex; flex-wrap: wrap; gap: 9px; }
+    .gift-button {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 37px;
+      padding: 0 13px;
+      color: #6b4c24;
+      background: #f4dcae;
+      box-shadow: inset 0 0 0 1px rgba(152, 108, 50, .18);
+    }
+    .gift-button:hover { background: #ebca8c; }
+    .gift-waiting {
+      padding: 9px 12px;
+      border-radius: 10px;
+      color: #7c8784;
+      background: #f5f7f6;
+      font-size: 11px;
+    }
+
+    .catalog-panel { padding: 20px; }
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 11px;
+    }
+
+    .action-card {
+      display: grid;
+      grid-template-columns: 66px minmax(0, 1fr);
+      gap: 11px;
+      min-height: 89px;
+      padding: 10px;
+      border: 1px solid #e0e5e2;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .action-preview {
+      width: 66px;
+      height: 66px;
+      object-fit: contain;
+      border-radius: 9px;
+      background: #f2f4f3;
+      filter: saturate(.72);
+    }
+
+    .action-copy { display: grid; min-width: 0; align-content: center; gap: 6px; }
+    .action-name { overflow: hidden; font-size: 13px; line-height: 18px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .action-state { color: #8a9391; font-size: 10px; }
+    .buy-button { justify-self: start; min-height: 29px; padding: 0 10px; font-size: 11px; }
+
+    .empty {
+      padding: 21px;
+      border: 1px dashed #d8dedb;
+      border-radius: 11px;
+      color: #7c8784;
+      font-size: 12px;
+      line-height: 19px;
+      text-align: center;
+    }
+
+    .history { display: grid; gap: 7px; }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 9px 0;
+      border-bottom: 1px solid #edf0ee;
+      font-size: 12px;
+    }
+    .history-item:last-child { border-bottom: 0; }
+    .history-time { flex: 0 0 auto; color: #929b98; font-size: 10px; }
+
+    #toast {
+      position: fixed;
+      z-index: 10;
+      left: 50%;
+      bottom: 24px;
+      max-width: 80%;
+      padding: 10px 16px;
+      border-radius: 20px;
+      color: #fff;
+      background: rgba(41, 55, 52, .94);
+      box-shadow: 0 8px 26px rgba(22, 32, 29, .2);
+      font-size: 12px;
+      transform: translate(-50%, 14px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    #toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    .modal {
+      position: fixed;
+      z-index: 30;
+      inset: 0;
+      display: grid;
+      padding: 26px;
+      place-items: center;
+      background: rgba(27, 38, 35, 0.48);
+      backdrop-filter: blur(8px);
+    }
+
+    .reward-card {
+      position: relative;
+      width: min(390px, calc(100vw - 44px));
+      padding: 27px 27px 24px;
+      overflow: hidden;
+      border: 1px solid rgba(219, 194, 149, 0.8);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 17%, rgba(242, 208, 139, 0.27), transparent 36%),
+        linear-gradient(180deg, #fffdf8, #fff 72%);
+      box-shadow: 0 28px 70px rgba(21, 31, 28, 0.25);
+      text-align: center;
+    }
+
+    .reward-card::before,
+    .reward-card::after {
+      content: "✦";
+      position: absolute;
+      color: #d4a75e;
+      opacity: .55;
+    }
+    .reward-card::before { top: 24px; left: 30px; font-size: 24px; transform: rotate(-12deg); }
+    .reward-card::after { top: 73px; right: 35px; font-size: 16px; transform: rotate(10deg); }
+
+    .reward-kicker {
+      color: #a1783f;
+      font-size: 11px;
+      line-height: 18px;
+      font-weight: 720;
+      letter-spacing: .12em;
+    }
+
+    .reward-title { margin-top: 2px; font-size: 23px; line-height: 32px; }
+
+    .reward-stage {
+      display: grid;
+      width: 218px;
+      height: 218px;
+      margin: 18px auto 15px;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid #e5ded0;
+      border-radius: 19px;
+      background: rgba(246, 245, 240, 0.78);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+
+    .reward-preview { width: 100%; height: 100%; object-fit: contain; }
+
+    .points-reward-icon {
+      position: relative;
+      display: grid;
+      width: 132px;
+      height: 132px;
+      border: 8px solid #ffe2a0;
+      border-radius: 50%;
+      color: #fff8dc;
+      background: linear-gradient(145deg, #f0bf60 8%, #c8832f 72%);
+      box-shadow:
+        0 16px 28px rgba(159, 99, 34, .28),
+        inset 0 3px 4px rgba(255, 250, 221, .65),
+        inset 0 -6px 10px rgba(130, 76, 25, .24);
+      font-size: 61px;
+      line-height: 1;
+      place-items: center;
+    }
+
+    .points-reward-icon::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border: 3px solid rgba(255, 242, 194, .72);
+      border-radius: 50%;
+    }
+
+    .points-reward-icon::after {
+      content: "";
+      position: absolute;
+      right: -23px;
+      bottom: -17px;
+      width: 48px;
+      height: 48px;
+      border: 5px solid #ffe2a0;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #eab352, #bd7428);
+      box-shadow: 0 8px 15px rgba(142, 85, 28, .24);
+    }
+
+    .reward-name { font-size: 20px; line-height: 29px; font-weight: 750; }
+    .reward-summary {
+      display: grid; gap: 8px; max-height: min(240px, 35vh); overflow: auto;
+      margin: 16px 0; padding: 12px; border-radius: 10px;
+      background: #f5f7f6; text-align: left; font-size: 13px; line-height: 21px;
+      overflow-wrap: anywhere;
+    }
+    .reward-source { margin-top: 2px; color: #8a9592; font-size: 11px; }
+
+    .reward-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px; }
+    .reward-actions.single { grid-template-columns: 1fr; }
+    .reward-confirm, .reward-preview-button {
+      width: 100%; min-height: 42px; border: 0; border-radius: 10px; font-weight: 680; cursor: pointer;
+    }
+    .reward-confirm { color: #fff; background: #4f8379; }
+    .reward-confirm:hover { background: #426f67; }
+    .reward-preview-button { color: #426f67; background: #e8f0ee; }
+    .reward-preview-button:hover { background: #dce9e6; }
+
+    .modal-close {
+      position: absolute;
+      z-index: 2;
+      top: 13px;
+      right: 13px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: #82908c;
+      background: rgba(231, 235, 233, .8);
+      cursor: pointer;
+    }
+
+    @media (max-width: 780px) {
+      header, main { padding-left: 24px; padding-right: 24px; }
+      header { align-items: flex-start; }
+      .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+      .blind-box { grid-template-columns: 66px minmax(0, 1fr); }
+      .blind-box .primary-button { grid-column: 1 / -1; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>动作商店</h1>
+    <div class="header-actions" id="header-actions">
+      <button class="notice-button" id="notice-button" type="button" aria-expanded="false">
+        <span class="notice-mark">•</span>公告
+      </button>
+      <div class="notice-popover" id="notice-popover" hidden>
+        <h3>动作商店说明</h3>
+        <p>每天最多获取 8 小时的陪伴经验；今日陪伴和累计陪伴按实际时间持续记录，不设上限。鼠标移到桌宠上可查看 30 分钟小礼物倒计时，也可在设置中隐藏；手动领取后获得 30 积分并重新计时。随机礼物盲盒会自动存入这里，可单个或全部打开，获得 20–30 积分或未解锁动作。</p>
+      </div>
+      <div class="points-pill" aria-label="心意积分">
+        <span class="points-symbol">✦</span>
+        <span class="points-copy"><span class="points-label">心意积分</span><strong id="points">0</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="overview">
+      <section class="panel level-panel">
+        <div class="level-line">
+          <span class="level-name"><span class="level-caption">陪伴等级</span>Lv.<span id="level">1</span></span>
+          <span class="level-value"><span id="level-exp">0</span> / <span id="level-next">60</span> 经验</span>
+        </div>
+        <div class="progress" aria-label="等级经验进度"><span id="level-progress"></span></div>
+        <div class="total-companion">
+          <span>累计陪伴</span>
+          <strong id="total-companion-time">0分钟</strong>
+        </div>
+      </section>
+      <section class="panel time-panel">
+        <span class="time-title">今日陪伴</span>
+        <strong id="active-time">0分钟</strong>
+      </section>
+    </div>
+
+    <section class="panel shop-panel">
+      <div class="section-heading">
+        <h2>动作盲盒</h2>
+        <span class="section-note">今日剩余 <strong id="box-remaining">2</strong> 次</span>
+      </div>
+      <div class="blind-box">
+        <div class="box-art" aria-hidden="true">?</div>
+        <div class="box-copy">
+          <h3>随机未解锁动作</h3>
+          <p class="coupon-line" id="coupon-line">暂无优惠券</p>
+        </div>
+        <button class="primary-button" id="buy-box" type="button">开启盲盒 · <span id="box-cost">0</span>积分</button>
+      </div>
+    </section>
+
+    <section class="panel shop-panel gifts" id="gift-section" hidden>
+      <div class="section-heading">
+        <h2>随机礼物盲盒</h2>
+        <div class="gift-heading-actions">
+          <span class="section-note" id="gift-status">待打开 ×0</span>
+          <button class="primary-button" id="open-all-gifts" type="button" disabled>全部打开</button>
+        </div>
+      </div>
+      <div class="gift-strip" id="gift-strip"></div>
+    </section>
+
+    <section class="panel catalog-panel">
+      <div class="section-heading">
+        <h2>动作兑换</h2>
+        <span class="section-note">已收集 <strong id="collection-count">0 / 0</strong></span>
+      </div>
+      <div class="catalog-grid" id="catalog"></div>
+      <div class="empty" id="catalog-empty" hidden>当前形态的动作已经全部收集完成。</div>
+    </section>
+
+    <section class="panel catalog-panel" id="history-panel">
+      <div class="section-heading"><h2>最近获得</h2></div>
+      <div class="history" id="history"></div>
+      <div class="empty" id="history-empty">还没有收获记录，先陪伴一会儿吧。</div>
+    </section>
+  </main>
+
+  <div class="modal" id="reward-modal" hidden>
+    <section class="reward-card" role="dialog" aria-modal="true" aria-labelledby="reward-title">
+      <button class="modal-close" id="reward-close" type="button" aria-label="关闭">×</button>
+      <p class="reward-kicker" id="reward-source">解锁成功</p>
+      <h2 class="reward-title" id="reward-title">获得新动作</h2>
+      <div class="reward-stage" id="reward-stage">
+        <img class="reward-preview" id="reward-preview" alt="获得的动作">
+        <div class="points-reward-icon" id="reward-points-icon" role="img" aria-label="心意积分" hidden>✦</div>
+      </div>
+      <p class="reward-name" id="reward-name"></p>
+      <div class="reward-summary" id="reward-summary" hidden></div>
+      <p class="reward-source" id="reward-footer">已加入动作库</p>
+      <div class="reward-actions" id="reward-actions">
+        <button class="reward-preview-button" id="reward-play" type="button">再播放一次</button>
+        <button class="reward-confirm" id="reward-confirm" type="button">收下</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const points = document.getElementById('points');
+    const level = document.getElementById('level');
+    const levelExp = document.getElementById('level-exp');
+    const levelNext = document.getElementById('level-next');
+    const levelProgress = document.getElementById('level-progress');
+    const totalCompanionTime = document.getElementById('total-companion-time');
+    const activeTime = document.getElementById('active-time');
+    const boxRemaining = document.getElementById('box-remaining');
+    const buyBox = document.getElementById('buy-box');
+    const couponLine = document.getElementById('coupon-line');
+    const collectionCount = document.getElementById('collection-count');
+    const catalog = document.getElementById('catalog');
+    const catalogEmpty = document.getElementById('catalog-empty');
+    const giftSection = document.getElementById('gift-section');
+    const giftStatus = document.getElementById('gift-status');
+    const giftStrip = document.getElementById('gift-strip');
+    const openAllGifts = document.getElementById('open-all-gifts');
+    const history = document.getElementById('history');
+    const historyEmpty = document.getElementById('history-empty');
+    const headerActions = document.getElementById('header-actions');
+    const noticeButton = document.getElementById('notice-button');
+    const noticePopover = document.getElementById('notice-popover');
+    const rewardModal = document.getElementById('reward-modal');
+    const rewardTitle = document.getElementById('reward-title');
+    const rewardPreview = document.getElementById('reward-preview');
+    const rewardStage = document.getElementById('reward-stage');
+    const rewardSummary = document.getElementById('reward-summary');
+    const rewardPointsIcon = document.getElementById('reward-points-icon');
+    const rewardName = document.getElementById('reward-name');
+    const rewardSource = document.getElementById('reward-source');
+    const rewardFooter = document.getElementById('reward-footer');
+    const rewardActions = document.getElementById('reward-actions');
+    const rewardPlay = document.getElementById('reward-play');
+    const toast = document.getElementById('toast');
+    let status = null;
+    let actions = [];
+    let toastTimer = null;
+    let busy = false;
+    let rewardActionId = null;
+
+    function formatDuration(seconds) {
+      const safe = Math.max(0, Math.floor(Number(seconds) || 0));
+      const hours = Math.floor(safe / 3600);
+      const minutes = Math.floor((safe % 3600) / 60);
+      if (hours && minutes) return `${hours}小时${minutes}分钟`;
+      if (hours) return `${hours}小时`;
+      return `${minutes}分钟`;
+    }
+
+    function renderGiftStatus() {
+      const giftCount = status?.giftInbox?.length || 0;
+      giftStatus.textContent = `待打开 ×${giftCount}`;
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('visible');
+      toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 2400);
+    }
+
+    function setNoticeOpen(open) {
+      noticePopover.hidden = !open;
+      noticeButton.setAttribute('aria-expanded', String(open));
+    }
+
+    function showActionReward(action, source) {
+      if (!action) return;
+      rewardStage.hidden = false;
+      rewardSummary.hidden = true;
+      rewardSource.textContent = source;
+      rewardTitle.textContent = '获得新动作';
+      rewardName.textContent = action.label || action.id;
+      rewardPreview.src = action.mediaUrl || action.previewUrl || '';
+      rewardPreview.hidden = false;
+      rewardPointsIcon.hidden = true;
+      rewardFooter.textContent = '已加入动作库';
+      rewardPlay.hidden = false;
+      rewardActions.classList.remove('single');
+      rewardActionId = action.id;
+      rewardModal.hidden = false;
+      document.getElementById('reward-confirm').focus();
+    }
+
+    function showPointsReward(reward, source) {
+      rewardStage.hidden = false;
+      rewardSummary.hidden = true;
+      const amount = Math.max(0, Math.floor(Number(reward?.points) || 0));
+      rewardSource.textContent = source;
+      rewardTitle.textContent = '获得心意积分';
+      rewardName.textContent = `+${amount} 心意积分`;
+      rewardPreview.hidden = true;
+      rewardPreview.removeAttribute('src');
+      rewardPointsIcon.hidden = false;
+      rewardFooter.textContent = '已存入心意积分';
+      rewardPlay.hidden = true;
+      rewardActions.classList.add('single');
+      rewardActionId = null;
+      rewardModal.hidden = false;
+      document.getElementById('reward-confirm').focus();
+    }
+
+    function showAllGiftRewards(result) {
+      const rewards = result.rewards || [];
+      const totalPoints = rewards.reduce((sum, reward) => sum + (reward.type === 'points' ? reward.points : 0), 0);
+      const actionRewards = rewards.filter((reward) => reward.type === 'action');
+      const rows = [];
+      if (totalPoints) rows.push(`心意积分 +${totalPoints}`);
+      rows.push(...actionRewards.map((reward) => `新动作：${reward.label}`));
+      for (const [type, label] of [['free-blind-box', '免费盲盒券'], ['half-blind-box', '半价盲盒券']]) {
+        const count = rewards.filter((reward) => reward.type === type).length;
+        if (count) rows.push(`${label} ×${count}`);
+      }
+      rewardSummary.replaceChildren(...rows.map((text) => {
+        const row = document.createElement('div');
+        row.textContent = text;
+        return row;
+      }));
+      rewardSource.textContent = '随机礼物盲盒';
+      rewardTitle.textContent = `已打开 ${result.openedCount} 份礼物`;
+      rewardName.textContent = '全部奖励已收下';
+      rewardStage.hidden = true;
+      rewardSummary.hidden = false;
+      rewardPreview.removeAttribute('src');
+      rewardFooter.textContent = '已存入陪伴进度，新动作可在动作库查看';
+      rewardPlay.hidden = true;
+      rewardActions.classList.add('single');
+      rewardActionId = null;
+      rewardModal.hidden = false;
+      document.getElementById('reward-confirm').focus();
+    }
+
+    function closeActionReward() {
+      rewardModal.hidden = true;
+      rewardPreview.removeAttribute('src');
+      rewardActionId = null;
+    }
+
+    function setBusy(value) {
+      busy = value;
+      buyBox.disabled = value || !status || (!status.starterBlindBoxAvailable && status.blindBoxesRemaining <= 0);
+      catalog.querySelectorAll('button').forEach((button) => { button.disabled = value; });
+      giftStrip.querySelectorAll('button').forEach((button) => { button.disabled = value; });
+      openAllGifts.disabled = value || !status?.giftInbox?.length;
+      openAllGifts.textContent = value ? '正在处理…' : '全部打开';
+      openAllGifts.setAttribute('aria-busy', String(value));
+    }
+
+    function renderStatus(nextStatus) {
+      if (!nextStatus) return;
+      status = nextStatus;
+      points.textContent = status.points;
+      level.textContent = status.level;
+      levelExp.textContent = status.currentExperience;
+      levelNext.textContent = status.nextLevelExperience;
+      levelProgress.style.width = `${Math.min(100, status.currentExperience / status.nextLevelExperience * 100)}%`;
+      totalCompanionTime.textContent = formatDuration(status.totalCompanionSeconds);
+      activeTime.textContent = formatDuration(status.today.companionSeconds);
+      boxRemaining.textContent = status.blindBoxesRemaining;
+      collectionCount.textContent = `${status.unlockedCount} / ${status.totalActionCount}`;
+
+      const coupons = [];
+      if (status.starterBlindBoxAvailable) coupons.push('首个盲盒免费');
+      if (status.freeBlindBoxCoupons) coupons.push(`免费券 ×${status.freeBlindBoxCoupons}`);
+      if (status.halfPriceBlindBoxCoupons) coupons.push(`半价券 ×${status.halfPriceBlindBoxCoupons}`);
+      couponLine.textContent = coupons.length ? coupons.join(' · ') : '暂无优惠券';
+      buyBox.innerHTML = `开启盲盒 · <span id="box-cost">${status.blindBoxCost}</span>积分`;
+
+      const gifts = status.giftInbox || [];
+      giftSection.hidden = false;
+      const giftButtons = gifts.map((gift, index) => {
+        const button = document.createElement('button');
+        button.className = 'gift-button';
+        button.type = 'button';
+        button.textContent = `🎁 打开礼物 ${index + 1}`;
+        button.addEventListener('click', () => openGift(gift.id));
+        return button;
+      });
+      if (giftButtons.length) {
+        giftStrip.replaceChildren(...giftButtons);
+      } else {
+        const waiting = document.createElement('span');
+        waiting.className = 'gift-waiting';
+        waiting.textContent = '随机礼物盲盒出现后会自动存到这里';
+        giftStrip.replaceChildren(waiting);
+      }
+      renderGiftStatus();
+
+      const rewards = status.recentRewards || [];
+      historyEmpty.hidden = rewards.length > 0;
+      history.replaceChildren(...rewards.slice(0, 8).map((reward) => {
+        const row = document.createElement('div');
+        row.className = 'history-item';
+        const copy = document.createElement('span');
+        copy.textContent = reward.text;
+        const date = document.createElement('time');
+        date.className = 'history-time';
+        const parsed = new Date(reward.at);
+        date.textContent = Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        row.append(copy, date);
+        return row;
+      }));
+      setBusy(busy);
+    }
+
+    function renderCatalog() {
+      const locked = actions.filter((action) => action.locked && action.builtIn !== false);
+      catalogEmpty.hidden = locked.length > 0;
+      catalog.replaceChildren(...locked.map((action) => {
+        const card = document.createElement('article');
+        card.className = 'action-card';
+        const image = document.createElement('img');
+        image.className = 'action-preview';
+        image.src = action.previewUrl || action.mediaUrl;
+        image.alt = '';
+        const copy = document.createElement('div');
+        copy.className = 'action-copy';
+        const name = document.createElement('span');
+        name.className = 'action-name';
+        name.textContent = action.label;
+        name.title = action.label;
+        const state = document.createElement('span');
+        state.className = 'action-state';
+        state.textContent = '尚未解锁';
+        const button = document.createElement('button');
+        button.className = 'buy-button';
+        button.type = 'button';
+        button.textContent = `${action.unlockPrice || 200}积分兑换`;
+        button.addEventListener('click', () => buyAction(action));
+        copy.append(name, state, button);
+        card.append(image, copy);
+        return card;
+      }));
+      setBusy(busy);
+    }
+
+    async function refresh() {
+      const [nextStatus, nextActions] = await Promise.all([
+        window.companionAPI.getGrowthStatus(),
+        window.companionAPI.getGrowthCatalog()
+      ]);
+      actions = nextActions || [];
+      renderStatus(nextStatus);
+      renderCatalog();
+    }
+
+    async function buyAction(action) {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const result = await window.companionAPI.buyGrowthAction(action.id);
+        if (!result.ok) {
+          showToast(result.message || '兑换失败。');
+          return;
+        }
+        showActionReward(action, '兑换成功');
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || '兑换失败。');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function openGift(id) {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const result = await window.companionAPI.openGrowthGift(id);
+        if (!result.ok) {
+          showToast(result.message || '礼物打开失败。');
+        } else if (result.actionId) {
+          const action = actions.find((item) => item.id === result.actionId);
+          showActionReward(action || { id: result.actionId, label: result.reward.label }, '随机礼物');
+        } else if (result.reward?.type === 'points') {
+          showPointsReward(result.reward, '随机礼物');
+        } else {
+          showToast(`礼物里是：${result.reward.label}`);
+        }
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || '礼物打开失败。');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    openAllGifts.addEventListener('click', async () => {
+      if (busy || !status?.giftInbox?.length) return;
+      setBusy(true);
+      let opened = false;
+      try {
+        const result = await window.companionAPI.openAllGrowthGifts();
+        if (!result.ok) {
+          showToast(result.message || '礼物打开失败。');
+        } else {
+          opened = true;
+          renderStatus(result.status);
+          showAllGiftRewards(result);
+        }
+        await refresh();
+      } catch (error) {
+        showToast(opened ? '礼物已收下，列表更新失败，请重新打开动作商店。' : (error?.message || '礼物打开失败，请重试。'));
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    buyBox.addEventListener('click', async () => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const result = await window.companionAPI.buyGrowthBlindBox();
+        if (!result.ok) {
+          showToast(result.message || '盲盒开启失败。');
+          return;
+        }
+        const action = actions.find((item) => item.id === result.actionId);
+        showActionReward(action || { id: result.actionId, label: result.actionId }, '盲盒获得');
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || '盲盒开启失败。');
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    noticeButton.addEventListener('click', () => setNoticeOpen(noticePopover.hidden));
+    document.addEventListener('click', (event) => {
+      if (!headerActions.contains(event.target)) setNoticeOpen(false);
+    });
+    document.getElementById('reward-close').addEventListener('click', closeActionReward);
+    document.getElementById('reward-confirm').addEventListener('click', closeActionReward);
+    rewardPlay.addEventListener('click', () => {
+      if (rewardActionId) window.companionAPI.playAction(rewardActionId);
+    });
+    rewardModal.addEventListener('click', (event) => {
+      if (event.target === rewardModal) closeActionReward();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!rewardModal.hidden) closeActionReward();
+      else setNoticeOpen(false);
+    });
+
+    window.companionAPI.onGrowthChanged(renderStatus);
+    window.companionAPI.onActionsChanged(refresh);
+    window.companionAPI.getCharacter().then((character) => {
+      document.title = `${character.productName} · 动作商店`;
+    });
+    refresh().catch((error) => showToast(error?.message || '动作商店加载失败。'));
+  </script>
+</body>
+</html>

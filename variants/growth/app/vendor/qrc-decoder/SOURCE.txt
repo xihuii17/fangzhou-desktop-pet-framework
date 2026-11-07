@@ -1,0 +1,5 @@
+qrc-decoder 1.0.2
+https://github.com/apoint123/qrc-decoder
+https://registry.npmjs.org/qrc-decoder/-/qrc-decoder-1.0.2.tgz
+sha512-BLU8Mh0dcBq7EtWFEgnYBeUk/8VMpQU0z6KY3v/6Wz+497bc6WdOhQ51T+21DFNmJ0kWLhpmCyAfyVul739RFg==
+Local changes: use Node zlib instead of pako, cap decompressed data at 1 MiB, omit source map reference. Used only for local QQ Music lyric cache interoperability.

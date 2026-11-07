@@ -1,0 +1,13 @@
+{
+  "name": "fangzhou-desktop-pet-framework",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "prepare:example": "node scripts/prepare-example.cjs",
+    "start": "node scripts/run-example.cjs",
+    "build": "node scripts/run-example.cjs --build",
+    "test": "node scripts/test-example.cjs && node scripts/test-fullscreen-guard.cjs && node scripts/test-pet-window-geometry.cjs && node scripts/test-window-drag.cjs && node scripts/test-ai-backend.cjs"
+  },
+  "devDependencies": { "electron": "30.0.0", "electron-builder": "24.13.3" }
+}

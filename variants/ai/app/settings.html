@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>桌宠设置</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #253034;
+      background: #f5f6f8;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      min-width: 620px;
+      margin: 0;
+      background: #f5f6f8;
+      letter-spacing: 0;
+    }
+
+    button, input { font: inherit; }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 108px;
+      padding: 22px 34px 19px;
+      border-bottom: 1px solid #dfe3e6;
+      background: #fff;
+    }
+
+    .avatar {
+      width: 72px;
+      height: 72px;
+      flex: 0 0 72px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 2px rgba(23, 37, 39, 0.12));
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      line-height: 26px;
+      font-weight: 650;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: #687276;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    main { padding: 8px 34px 26px; }
+
+    section {
+      padding: 18px 0 10px;
+      border-bottom: 1px solid #dfe3e6;
+    }
+
+    section:last-child { border-bottom: 0; }
+
+    h2 {
+      margin: 0 0 10px;
+      color: #687276;
+      font-size: 12px;
+      line-height: 18px;
+      font-weight: 650;
+    }
+
+    .setting-row {
+      display: grid;
+      min-height: 48px;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      align-items: center;
+      column-gap: 28px;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    .control-line {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      width: 190px;
+      accent-color: #217f7b;
+    }
+
+    #scale-value,
+    #bubble-scale-value,
+    #lyrics-scale-value {
+      width: 44px;
+      color: #5e696d;
+      font-size: 13px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .switch {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      flex: 0 0 38px;
+    }
+
+    .switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      border: 1px solid #bdc5c8;
+      border-radius: 11px;
+      background: #cbd1d3;
+      cursor: pointer;
+      transition: background 150ms ease, border-color 150ms ease;
+    }
+
+    .switch-track::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(22, 31, 33, 0.25);
+      transition: transform 150ms ease;
+    }
+
+    .switch input:checked + .switch-track {
+      border-color: #217f7b;
+      background: #217f7b;
+    }
+
+    .switch input:checked + .switch-track::after { transform: translateX(16px); }
+    .switch input:focus-visible + .switch-track { outline: 2px solid #88c8c4; outline-offset: 2px; }
+
+    .segments {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid #cfd5d7;
+      border-radius: 7px;
+      background: #e8ebed;
+    }
+
+    .segment {
+      min-width: 58px;
+      height: 27px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 5px;
+      color: #596468;
+      background: transparent;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .segment.active {
+      color: #243033;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(28, 39, 41, 0.16);
+    }
+
+    #activity-mode {
+      position: relative;
+    }
+
+    #activity-mode::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      top: 2px;
+      bottom: 2px;
+      left: 2px;
+      width: calc((100% - 4px) / 3);
+      border-radius: 5px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(28, 39, 41, 0.16);
+      transition: transform 180ms ease;
+    }
+
+    #activity-mode[data-value="daily"]::before { transform: translateX(100%); }
+    #activity-mode[data-value="office"]::before { transform: translateX(200%); }
+    #activity-mode .segment { position: relative; z-index: 1; }
+    #activity-mode .segment.active { background: transparent; box-shadow: none; }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+    }
+
+    .button-group { display: flex; gap: 8px; }
+
+    .button {
+      min-height: 32px;
+      padding: 0 13px;
+      border: 1px solid #cbd1d3;
+      border-radius: 6px;
+      color: #2c373a;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .button:hover { border-color: #aab4b7; background: #fafbfb; }
+    .button:active { background: #eef1f2; }
+    .button.danger { color: #a33c3c; }
+
+    #status {
+      min-width: 56px;
+      color: #217f7b;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+
+    #status.visible { opacity: 1; }
+
+    .setting-copy {
+      display: grid;
+      gap: 2px;
+    }
+
+    .setting-note {
+      color: #7a8488;
+      font-size: 11px;
+      line-height: 16px;
+    }
+
+    #lyrics-status[data-state="active"] { color: #217f7b; }
+    #lyrics-status[data-state="error"],
+    #lyrics-status[data-state="permission"] { color: #a65a3f; }
+
+    .secret-input {
+      width: 250px;
+      height: 32px;
+      padding: 0 9px;
+      border: 1px solid #cbd1d3;
+      border-radius: 5px;
+      outline: 0;
+      color: #263033;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .secret-input:focus { border-color: #5ca9a4; box-shadow: 0 0 0 2px rgba(70, 151, 145, 0.14); }
+    .secret-input::placeholder { color: #9aa3a6; }
+
+    #ai-status[data-state="ready"] { color: #217f7b; }
+    #ai-status[data-state="error"] { color: #a65a3f; }
+
+    .inline-buttons { display: flex; justify-content: flex-end; gap: 7px; }
+    .ai-select { width: 250px; height: 34px; padding: 0 9px; border: 1px solid #cbd1d3; border-radius: 5px; color: #263033; background: #fff; font: inherit; font-size: 13px; }
+    .ai-guide { margin: 0 0 10px; padding: 10px 12px; border-radius: 6px; color: #526867; background: #eef6f4; font-size: 12px; line-height: 20px; }
+    .button:disabled { cursor: wait; opacity: .55; }
+  </style>
+</head>
+<body>
+  <header>
+    <img class="avatar" id="character-avatar" alt="桌宠角色">
+    <div>
+      <h1 id="product-name">桌宠</h1>
+      <p class="subtitle">偏好设置</p>
+    </div>
+  </header>
+
+  <main>
+    <section id="appearance-setting" hidden>
+      <h2>角色</h2>
+      <div class="setting-row">
+        <span class="setting-label">显示形态</span>
+        <div class="segments" id="appearance-options" role="group" aria-label="显示形态"></div>
+      </div>
+    </section>
+    <section>
+      <h2>显示</h2>
+      <div class="setting-row">
+        <span class="setting-label">桌宠大小</span>
+        <div class="control-line">
+          <input id="scale" type="range" min="45" max="140" step="5" aria-label="桌宠大小">
+          <span id="scale-value">100%</span>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">总在最前</span>
+        <label class="switch">
+          <input id="always-on-top" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">文字气泡大小</span>
+        <div class="control-line">
+          <input id="bubble-scale" type="range" min="65" max="125" step="5" aria-label="文字气泡大小">
+          <span id="bubble-scale-value">100%</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>陪伴</h2>
+      <div class="setting-row">
+        <span class="setting-label">桌宠模式</span>
+        <div class="segments" id="activity-mode" role="group" aria-label="桌宠模式">
+          <button class="segment" type="button" data-value="quiet">安静</button>
+          <button class="segment" type="button" data-value="daily">日常</button>
+          <button class="segment" type="button" data-value="office">办公</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">自动活动</span>
+        <label class="switch">
+          <input id="auto-action" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">低占用模式</span>
+          <span class="setting-note">降低自动动作频率，聊天和手动互动不受影响</span>
+        </div>
+        <label class="switch">
+          <input id="low-power" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">活动频率</span>
+        <div class="segments" id="frequency" role="group" aria-label="活动频率">
+          <button class="segment" type="button" data-value="rare">偶尔</button>
+          <button class="segment" type="button" data-value="normal">适中</button>
+          <button class="segment" type="button" data-value="frequent">常常</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">简短文字</span>
+        <label class="switch">
+          <input id="speech" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+
+
+
+    </section>
+
+    <section id="lyrics-setting">
+      <h2>音乐陪伴</h2>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">显示同步歌词</span>
+          <span class="setting-note" id="lyrics-status" data-state="disabled">未开启</span>
+        </div>
+        <label class="switch">
+          <input id="lyrics-enabled" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row" id="lyrics-size-setting">
+        <div class="setting-copy">
+          <span class="setting-label">歌词窗口大小</span>
+          <span class="setting-note">独立缩放歌词面板和文字，不改变桌宠大小</span>
+        </div>
+        <div class="control-line">
+          <input id="lyrics-scale" type="range" min="70" max="160" step="5" aria-label="歌词窗口大小">
+          <span id="lyrics-scale-value">100%</span>
+        </div>
+      </div>
+      <p class="setting-note">优先读取 QQ 音乐、网易云音乐已有的本地歌词缓存；未找到时尝试读取歌词页或桌面歌词。不同播放器版本保存缓存和开放歌词的方式可能不同。</p>
+      <button id="lyrics-permission" type="button" hidden>开启辅助功能权限</button>
+    </section>
+
+    <section>
+      <h2>系统</h2>
+      <div class="setting-row">
+        <span class="setting-label">登录时启动</span>
+        <label class="switch">
+          <input id="login" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+    </section>
+
+    <section id="ai-settings" hidden>
+      <h2>角色对话</h2>
+      <p class="ai-guide">① 在 DeepSeek 开放平台创建 API Key，在下方保存。<br>② 测试连接，再开启对话。③ 点桌宠的聊天按钮开始。<br>测试与聊天会调用你的 DeepSeek API，按接口用量计费。</p>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">DeepSeek 对话</span>
+          <span class="setting-note">发送对话、启用的角色设定与记忆，以及当前陪伴模式和时间</span>
+          <span class="setting-note" id="ai-status" data-state="idle">尚未配置</span>
+        </div>
+        <label class="switch">
+          <input id="ai-chat" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy"><label class="setting-label" for="ai-model">聊天模型</label><span class="setting-note">更换模型保留原来的角色设定与记忆</span></div>
+        <select class="ai-select" id="ai-model"><option value="deepseek-flash">DeepSeek Flash（默认）</option><option value="deepseek-v4-pro">DeepSeek V4 Pro</option></select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy"><label class="setting-label" for="ai-timeout">最长等待时间</label><span class="setting-note">等待时也可以在聊天窗口停止回复</span></div>
+        <select class="ai-select" id="ai-timeout"><option value="30">30 秒</option><option value="60" selected>60 秒</option><option value="90">90 秒</option><option value="120">120 秒</option></select>
+      </div>
+      <div class="setting-row"><span class="setting-note" id="ai-connection-note" role="status">模型与等待时间保存在这台电脑上</span><button class="button" id="ai-connection-save" type="button">保存连接设置</button></div>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">API Key</span>
+          <span class="setting-note">密钥加密保存在这台电脑上</span>
+        </div>
+        <div class="control-line">
+          <input class="secret-input" id="ai-key" type="password" maxlength="256" autocomplete="off" placeholder="填写 DeepSeek API Key" aria-label="DeepSeek API Key">
+          <button class="button" id="ai-key-save" type="button">保存</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">保留最近对话</span>
+          <span class="setting-note">保存在本机；开启后会随下一轮对话发给 DeepSeek</span>
+        </div>
+        <label class="switch">
+          <input id="ai-memory" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">使用长期记忆</span>
+          <span class="setting-note">可在 AI 窗口的“记忆”板块管理</span>
+        </div>
+        <label class="switch">
+          <input id="ai-long-term-memory" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-copy">
+          <span class="setting-label">从对话整理偏好</span>
+          <span class="setting-note">开启后会额外调用 AI 整理喜好，可在记忆页修改或删除</span>
+        </div>
+        <label class="switch">
+          <input id="ai-auto-learn" type="checkbox">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">连接与记录</span>
+        <div class="inline-buttons">
+          <button class="button" id="ai-test" type="button">测试连接</button>
+          <button class="button" id="ai-memory-clear" type="button">清空最近对话</button>
+          <button class="button danger" id="ai-key-clear" type="button">移除密钥</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="actions">
+      <div class="button-group">
+        <button class="button" id="manage-actions" type="button">动作管理</button>
+        <button class="button" id="reset-position" type="button">重置位置</button>
+        <button class="button" id="hide-pet" type="button">隐藏桌宠</button>
+      </div>
+      <div class="control-line">
+        <span id="status">已保存</span>
+        <button class="button danger" id="quit" type="button">退出应用</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const controls = {
+      scale: document.getElementById('scale'),
+      bubbleScale: document.getElementById('bubble-scale'),
+      lyricsScale: document.getElementById('lyrics-scale'),
+      alwaysOnTop: document.getElementById('always-on-top'),
+      autoActionEnabled: document.getElementById('auto-action'),
+      lowPowerMode: document.getElementById('low-power'),
+      speechEnabled: document.getElementById('speech'),
+      aiChatEnabled: document.getElementById('ai-chat'),
+      aiMemoryEnabled: document.getElementById('ai-memory'),
+      aiLongTermMemoryEnabled: document.getElementById('ai-long-term-memory'),
+      aiAutoLearnEnabled: document.getElementById('ai-auto-learn'),
+      lyricsEnabled: document.getElementById('lyrics-enabled'),
+      openAtLogin: document.getElementById('login')
+    };
+    const scaleValue = document.getElementById('scale-value');
+    const bubbleScaleValue = document.getElementById('bubble-scale-value');
+    const lyricsScaleValue = document.getElementById('lyrics-scale-value');
+    const frequencyButtons = [...document.querySelectorAll('#frequency .segment')];
+    const activityModeControl = document.getElementById('activity-mode');
+    const activityModeButtons = [...document.querySelectorAll('#activity-mode .segment')];
+    const status = document.getElementById('status');
+    const lyricsStatus = document.getElementById('lyrics-status');
+    const lyricsSetting = document.getElementById('lyrics-setting');
+    const aiSettings = document.getElementById('ai-settings');
+    const aiStatusLabel = document.getElementById('ai-status');
+    const aiKeyInput = document.getElementById('ai-key');
+    const aiModel = document.getElementById('ai-model');
+    const aiTimeout = document.getElementById('ai-timeout');
+    const aiConnectionNote = document.getElementById('ai-connection-note');
+    const appearanceSetting = document.getElementById('appearance-setting');
+    const appearanceOptions = document.getElementById('appearance-options');
+    const avatar = document.getElementById('character-avatar');
+    let characterInfo = null;
+    let config = null;
+    let saveTimer = null;
+    let statusTimer = null;
+    let pendingSettingsSection = null;
+
+    function render(nextConfig) {
+      config = nextConfig;
+      controls.lyricsScale.value = Math.round((config.lyricsScale || 1) * 100);
+      lyricsScaleValue.textContent = `${controls.lyricsScale.value}%`;
+      controls.scale.value = Math.round(config.scale * 100);
+      scaleValue.textContent = `${controls.scale.value}%`;
+      controls.bubbleScale.value = Math.round(config.bubbleScale * 100);
+      bubbleScaleValue.textContent = `${controls.bubbleScale.value}%`;
+      controls.alwaysOnTop.checked = config.alwaysOnTop;
+      controls.autoActionEnabled.checked = config.autoActionEnabled;
+      controls.lowPowerMode.checked = Boolean(config.lowPowerMode);
+      controls.speechEnabled.checked = config.speechEnabled;
+      controls.aiChatEnabled.checked = config.aiChatEnabled;
+      controls.aiMemoryEnabled.checked = config.aiMemoryEnabled;
+      controls.aiLongTermMemoryEnabled.checked = config.aiLongTermMemoryEnabled !== false;
+      controls.aiAutoLearnEnabled.checked = config.aiAutoLearnEnabled === true;
+      controls.aiAutoLearnEnabled.disabled = config.aiLongTermMemoryEnabled === false;
+      controls.lyricsEnabled.checked = config.lyricsEnabled;
+      controls.openAtLogin.checked = config.openAtLogin;
+      activityModeControl.dataset.value = config.activityMode;
+      activityModeButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.value === config.activityMode);
+      });
+      frequencyButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.value === config.actionFrequency);
+        button.disabled = !config.autoActionEnabled;
+      });
+      appearanceOptions.querySelectorAll('.segment').forEach((button) => {
+        button.classList.toggle('active', button.dataset.value === config.appearanceId);
+      });
+      const appearance = characterInfo?.appearances?.find((item) => item.id === config.appearanceId);
+      if (appearance?.idleMediaUrl) avatar.src = appearance.idleMediaUrl;
+    }
+
+    function renderAppearances(character) {
+      const appearances = Array.isArray(character.appearances) ? character.appearances : [];
+      appearanceSetting.hidden = appearances.length < 2;
+      appearanceOptions.replaceChildren(...appearances.map((appearance) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'segment';
+        button.dataset.value = appearance.id;
+        button.textContent = appearance.label;
+        button.addEventListener('click', () => save({ appearanceId: appearance.id }));
+        return button;
+      }));
+      if (config) render(config);
+    }
+
+    function showSaved() {
+      window.clearTimeout(statusTimer);
+      status.classList.add('visible');
+      statusTimer = window.setTimeout(() => status.classList.remove('visible'), 1200);
+    }
+
+    function renderLyricsStatus(nextStatus) {
+      lyricsStatus.textContent = nextStatus?.message || '未开启';
+      lyricsStatus.dataset.state = nextStatus?.state || 'disabled';
+      document.getElementById('lyrics-permission').hidden = window.companionAPI.platform !== 'darwin' || nextStatus?.state !== 'permission';
+    }
+    document.getElementById('lyrics-permission').addEventListener('click', async (event) => {
+      event.currentTarget.disabled = true;
+      try { renderLyricsStatus(await window.companionAPI.requestLyricsPermission()); }
+      finally { document.getElementById('lyrics-permission').disabled = false; }
+    });
+
+
+
+    function renderAIStatus(nextStatus, message = null, state = null) {
+      const configured = Boolean(nextStatus?.configured);
+      aiStatusLabel.textContent = message || nextStatus?.error || (configured ? `密钥已保存 · ${nextStatus.model || 'DeepSeek'}${nextStatus.busy ? ' · 正在回复' : ''}` : '尚未配置');
+      aiStatusLabel.dataset.state = state || (nextStatus?.error ? 'error' : (configured ? 'ready' : 'idle'));
+      aiKeyInput.placeholder = configured ? '已安全保存，填写新值可替换' : '填写 DeepSeek API Key';
+    }
+
+    function renderAIConnection(settings) {
+      aiModel.value = settings.model;
+      aiTimeout.value = String(settings.timeoutSeconds);
+      if (!aiTimeout.value) {
+        const option = new Option(`${settings.timeoutSeconds} 秒`, String(settings.timeoutSeconds));
+        aiTimeout.add(option); aiTimeout.value = option.value;
+      }
+    }
+
+    document.getElementById('ai-connection-save').addEventListener('click', async (event) => {
+      const button = event.currentTarget; button.disabled = true;
+      try {
+        const result = await window.companionAPI.saveAIConnectionSettings({ model: aiModel.value, timeoutSeconds: Number(aiTimeout.value) });
+        if (!result.ok) { aiConnectionNote.textContent = result.error || '连接设置保存失败'; return; }
+        renderAIConnection(result.settings); renderAIStatus(result.status);
+        aiConnectionNote.textContent = '连接设置已保存'; showSaved();
+      } catch (_error) { aiConnectionNote.textContent = '连接设置保存失败，请重试'; }
+      finally { button.disabled = false; }
+    });
+
+    function navigateSettings(section) {
+      if (section !== 'ai') return;
+      if (aiSettings.hidden) {
+        pendingSettingsSection = section;
+        return;
+      }
+      pendingSettingsSection = null;
+      aiSettings.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => aiKeyInput.focus(), 260);
+    }
+
+    async function save(partial) {
+      render(await window.companionAPI.saveConfig(partial));
+      showSaved();
+    }
+
+    controls.scale.addEventListener('input', () => {
+      scaleValue.textContent = `${controls.scale.value}%`;
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => save({ scale: Number(controls.scale.value) / 100 }), 80);
+    });
+
+    let lyricsSaveTimer = null;
+    controls.lyricsScale.addEventListener('input', () => {
+      lyricsScaleValue.textContent = `${controls.lyricsScale.value}%`;
+      window.clearTimeout(lyricsSaveTimer);
+      lyricsSaveTimer = window.setTimeout(() => save({ lyricsScale: Number(controls.lyricsScale.value) / 100 }), 80);
+    });
+
+    let bubbleSaveTimer = null;
+    controls.bubbleScale.addEventListener('input', () => {
+      bubbleScaleValue.textContent = `${controls.bubbleScale.value}%`;
+      window.clearTimeout(bubbleSaveTimer);
+      bubbleSaveTimer = window.setTimeout(() => save({ bubbleScale: Number(controls.bubbleScale.value) / 100 }), 80);
+    });
+
+    for (const [key, input] of Object.entries(controls)) {
+      if (key === 'scale' || key === 'bubbleScale' || key === 'lyricsScale') continue;
+      input.addEventListener('change', () => save({ [key]: input.checked }));
+    }
+
+    frequencyButtons.forEach((button) => {
+      button.addEventListener('click', () => save({ actionFrequency: button.dataset.value }));
+    });
+
+    activityModeButtons.forEach((button) => {
+      button.addEventListener('click', () => save({ activityMode: button.dataset.value }));
+    });
+
+    document.getElementById('reset-position').addEventListener('click', async () => {
+      await window.companionAPI.resetPosition();
+      showSaved();
+    });
+    document.getElementById('ai-key-save').addEventListener('click', async () => {
+      const value = aiKeyInput.value.trim();
+      if (!value) {
+        renderAIStatus(await window.companionAPI.getAIStatus(), '请先填写 API Key', 'error');
+        return;
+      }
+      const button = document.getElementById('ai-key-save'); button.disabled = true;
+      try {
+        const result = await window.companionAPI.saveAIKey(value);
+        if (result.ok) { aiKeyInput.value = ''; renderAIStatus(result.status, '密钥已安全保存，可测试连接', 'ready'); showSaved(); }
+        else renderAIStatus(null, result.error || '密钥保存失败', 'error');
+      } catch (_error) { renderAIStatus(null, '密钥保存失败，请重试', 'error'); }
+      finally { button.disabled = false; }
+    });
+    document.getElementById('ai-key-clear').addEventListener('click', async () => {
+      const result = await window.companionAPI.clearAIKey();
+      aiKeyInput.value = '';
+      renderAIStatus(result.status, result.ok ? '密钥已移除' : (result.error || '密钥移除失败'), result.ok ? 'idle' : 'error');
+    });
+    document.getElementById('ai-memory-clear').addEventListener('click', async () => {
+      if (!window.confirm('清空最近对话？正在进行的回复会停止，长期记忆保留。')) return;
+      const result = await window.companionAPI.clearAIMemory();
+      renderAIStatus(await window.companionAPI.getAIStatus(), result.ok ? '最近对话已清空' : (result.error || '清空失败，原记录未改动'), result.ok ? 'ready' : 'error');
+    });
+    document.getElementById('ai-test').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        renderAIStatus(await window.companionAPI.getAIStatus(), '正在测试连接…', 'idle');
+        const result = await window.companionAPI.testAIConnection();
+        renderAIStatus(await window.companionAPI.getAIStatus(), result.ok ? result.message : result.error, result.ok ? 'ready' : 'error');
+      } catch (_error) { renderAIStatus(null, '连接测试失败，请重试', 'error'); }
+      finally { button.disabled = false; }
+    });
+    document.getElementById('manage-actions').addEventListener('click', () => window.companionAPI.openActionManager());
+    document.getElementById('hide-pet').addEventListener('click', () => window.companionAPI.hidePet());
+    document.getElementById('quit').addEventListener('click', () => window.companionAPI.quit());
+    window.companionAPI.onConfigChanged(render);
+    window.companionAPI.onAIStatusChanged(renderAIStatus);
+    window.companionAPI.onLyricsStatusChanged(renderLyricsStatus);
+    window.companionAPI.onSettingsNavigate(navigateSettings);
+    window.companionAPI.getCharacter().then((character) => {
+      characterInfo = character;
+      renderAppearances(character);
+      document.title = `${character.productName}设置`;
+      document.getElementById('product-name').textContent = character.productName;
+      const avatar = document.getElementById('character-avatar');
+      avatar.alt = character.name;
+      if (character.idleMediaUrl) avatar.src = character.idleMediaUrl;
+      const lyricsAvailable = ['darwin', 'win32'].includes(window.companionAPI.platform) && (character.features?.lyrics ?? character.features?.qqLyrics);
+      lyricsSetting.hidden = !lyricsAvailable;
+      document.getElementById('lyrics-size-setting').hidden = !lyricsAvailable;
+      controls.lyricsEnabled.disabled = !lyricsAvailable;
+      const aiAvailable = Boolean(character.features?.aiChat);
+      aiSettings.hidden = !aiAvailable;
+      controls.aiChatEnabled.disabled = !aiAvailable;
+      window.companionAPI.getAIStatus().then(renderAIStatus);
+      window.companionAPI.getAIConnectionSettings().then(renderAIConnection).catch(() => { aiConnectionNote.textContent = '连接设置读取失败，原设置未改动'; });
+      if (pendingSettingsSection) navigateSettings(pendingSettingsSection);
+    });
+    window.companionAPI.getConfig().then(render);
+    window.companionAPI.getLyricsStatus().then(renderLyricsStatus);
+  </script>
+</body>
+</html>

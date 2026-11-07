@@ -1,0 +1,5 @@
+sql.js 1.13.0 (MIT)
+https://github.com/sql-js/sql.js
+https://registry.npmjs.org/sql.js/-/sql.js-1.13.0.tgz
+Verified npm integrity: sha512-RJbVP1HRDlUUXahJ7VMTcu9Rm1Nzw+EBpoPr94vnbD4LwR715F3CcxE2G2k45PewcaZ57pjetYa+LoSJLAASgA==
+Unmodified sql-wasm.js and sql-wasm.wasm; loaded only for bounded local NetEase music metadata snapshots. No native module, runtime installation or network required.

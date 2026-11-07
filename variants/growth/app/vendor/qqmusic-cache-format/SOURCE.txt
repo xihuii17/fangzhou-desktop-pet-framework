@@ -1,0 +1,7 @@
+QMC1 key table, header and offset rule used by qqmusic-cache-windows.js:
+https://github.com/GotKiCry/QQMusicMonitor/blob/main/src-tauri/src/qrc.rs
+QQMusicLyricNew filenames and WebkitCachePath.ini location:
+https://github.com/GotKiCry/QQMusicMonitor/blob/main/src-tauri/src/local_qrc.rs
+Accessed 2026-10-23. License: MIT (included).
+Only the QMC1 format layer is adapted; decoding uses the separately licensed
+qrc-decoder. Cache traversal, strict matching, limits and fallbacks are local.

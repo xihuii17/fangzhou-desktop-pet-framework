@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>动作管理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #253034;
+      background: #f3f5f6;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    button, textarea, input { font: inherit; }
+    button { cursor: pointer; }
+
+    body {
+      display: grid;
+      grid-template-rows: 74px minmax(0, 1fr);
+      letter-spacing: 0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 24px;
+      border-bottom: 1px solid #dce1e3;
+      background: #fff;
+    }
+
+    h1 { margin: 0 0 3px; font-size: 19px; line-height: 25px; }
+    .subtitle, .count, .meta { color: #697478; font-size: 12px; line-height: 18px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-search { width: 180px; }
+
+    .workspace {
+      display: grid;
+      min-height: 0;
+      grid-template-columns: 150px minmax(360px, 1fr) 292px;
+    }
+
+    nav {
+      padding: 16px 10px;
+      border-right: 1px solid #dce1e3;
+      background: #e9edef;
+    }
+
+    .nav-button {
+      display: flex;
+      width: 100%;
+      height: 35px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 6px;
+      color: #4d595d;
+      background: transparent;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .nav-button:hover { background: rgba(255, 255, 255, 0.62); }
+    .nav-button.active { color: #fff; background: #277f7c; }
+    .nav-button.drop-target { color: #277f7c; box-shadow: inset 0 0 0 2px #277f7c; background: rgba(255, 255, 255, 0.86); }
+    .nav-button.subgroup { padding-left: 20px; }
+    .nav-count { font-size: 11px; opacity: 0.75; }
+    .nav-section-label {
+      margin: 13px 10px 5px;
+      color: #7a8589;
+      font-size: 10px;
+      font-weight: 650;
+    }
+    .nav-section-label:first-child { margin-top: 2px; }
+
+    .library {
+      min-width: 0;
+      overflow-y: auto;
+      padding: 18px;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 10px;
+    }
+
+    .action-card {
+      position: relative;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid #d8dee0;
+      border-radius: 7px;
+      background: #fff;
+      text-align: left;
+      box-shadow: 0 1px 2px rgba(24, 36, 39, 0.04);
+    }
+
+    .action-card:hover { border-color: #9eacad; }
+    .action-card.selected { border-color: #277f7c; box-shadow: 0 0 0 2px rgba(39, 127, 124, 0.15); }
+    .action-card.dragging { opacity: 0.45; }
+    .action-card.pinned::after {
+      content: "已固定";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fff;
+      background: rgba(39, 127, 124, 0.9);
+      font-size: 10px;
+    }
+
+    .action-card.base::before {
+      content: "基础";
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fff;
+      background: rgba(166, 87, 70, 0.9);
+      font-size: 10px;
+    }
+
+    .thumb {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: contain;
+      border-radius: 5px;
+      background: #f5f7f7;
+      pointer-events: none;
+    }
+
+    .card-name {
+      display: block;
+      margin-top: 7px;
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 18px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-meta { color: #778185; font-size: 10px; line-height: 15px; }
+    .mode-tags { display: flex; min-height: 18px; margin-top: 3px; gap: 3px; overflow: hidden; }
+    .mode-tag { padding: 1px 4px; border-radius: 3px; color: #496064; background: #e7eeee; font-size: 9px; white-space: nowrap; }
+
+    aside {
+      min-width: 0;
+      overflow-y: auto;
+      padding: 20px;
+      border-left: 1px solid #dce1e3;
+      background: #fff;
+    }
+
+    #empty-editor {
+      margin-top: 60px;
+      color: #7c878b;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    #editor[hidden], #empty-editor[hidden] { display: none; }
+
+    .editor-preview {
+      display: block;
+      width: 176px;
+      height: 176px;
+      margin: 0 auto 16px;
+      object-fit: contain;
+      border-radius: 7px;
+      background: #f4f6f7;
+    }
+
+    .editor-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    h2 { margin: 0; font-size: 17px; line-height: 23px; }
+
+    .section {
+      padding: 15px 0;
+      border-top: 1px solid #e1e5e7;
+    }
+
+    .section-title { margin: 0 0 8px; color: #566165; font-size: 12px; font-weight: 650; }
+
+    textarea {
+      width: 100%;
+      min-height: 108px;
+      resize: vertical;
+      padding: 9px 10px;
+      border: 1px solid #cbd2d4;
+      border-radius: 6px;
+      color: #273235;
+      background: #fff;
+      font-size: 13px;
+      line-height: 20px;
+      outline: 0;
+    }
+
+    textarea:focus { border-color: #277f7c; box-shadow: 0 0 0 2px rgba(39, 127, 124, 0.14); }
+
+    .text-input {
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #cbd2d4;
+      border-radius: 6px;
+      color: #273235;
+      background: #fff;
+      font-size: 13px;
+      outline: 0;
+    }
+
+    .text-input:focus { border-color: #277f7c; box-shadow: 0 0 0 2px rgba(39, 127, 124, 0.14); }
+
+    .buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+    .button {
+      min-height: 31px;
+      padding: 0 11px;
+      border: 1px solid #c9d0d2;
+      border-radius: 6px;
+      color: #303b3e;
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .button:hover { border-color: #9faaac; background: #fafbfb; }
+    .button.primary { border-color: #277f7c; color: #fff; background: #277f7c; }
+    .button.primary:hover { background: #216f6c; }
+    .button.active { color: #fff; border-color: #a65746; background: #a65746; }
+    .button:disabled { cursor: default; opacity: 0.45; }
+    .button[hidden] { display: none; }
+
+    .mode-switches { display: grid; gap: 7px; }
+    .mode-switch {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 9px;
+      border: 1px solid #d4dade;
+      border-radius: 6px;
+      color: #465256;
+      background: #f8f9f9;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .mode-switch input { accent-color: #277f7c; }
+
+    #toast {
+      position: fixed;
+      right: 20px;
+      bottom: 18px;
+      padding: 7px 11px;
+      border-radius: 6px;
+      color: #fff;
+      background: rgba(39, 49, 52, 0.92);
+      font-size: 12px;
+      opacity: 0;
+      transform: translateY(5px);
+      transition: opacity 150ms ease, transform 150ms ease;
+      pointer-events: none;
+    }
+
+    #toast.visible { opacity: 1; transform: translateY(0); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background: rgba(31, 40, 43, 0.46);
+    }
+
+    .modal[hidden] { display: none; }
+
+    .picker-dialog {
+      display: grid;
+      width: min(760px, 94vw);
+      height: min(620px, 88vh);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid #cfd6d8;
+      border-radius: 8px;
+      background: #f5f7f7;
+      box-shadow: 0 18px 54px rgba(21, 30, 33, 0.24);
+    }
+
+    .picker-heading, .picker-tools, .picker-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 18px;
+      background: #fff;
+    }
+
+    .picker-heading { border-bottom: 1px solid #dde2e4; }
+    .picker-heading h2 { font-size: 17px; }
+    .picker-tools { padding-top: 11px; padding-bottom: 11px; }
+    .picker-tools .text-input { flex: 1; }
+    .picker-footer { justify-content: flex-end; border-top: 1px solid #dde2e4; }
+
+    #picker-grid {
+      display: grid;
+      min-height: 0;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      align-content: start;
+      gap: 9px;
+      overflow-y: auto;
+      padding: 14px 18px;
+    }
+
+    .picker-item {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 48px minmax(0, 1fr) 18px;
+      align-items: center;
+      gap: 8px;
+      padding: 7px;
+      border: 1px solid #d6dcde;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .picker-item:has(input:checked) { border-color: #277f7c; background: #f1f8f7; }
+    .picker-item img { width: 48px; height: 48px; object-fit: contain; border-radius: 4px; background: #f3f5f5; }
+    .picker-item span { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .picker-item input { accent-color: #277f7c; }
+    .text-input.header-search { width: 180px; flex: 0 0 180px; }
+
+    @media (max-width: 850px) {
+      .workspace { grid-template-columns: 130px minmax(320px, 1fr) 260px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>动作管理</h1>
+      <div class="subtitle">统一素材库、使用模式与互动清单</div>
+    </div>
+    <div class="header-actions">
+      <div class="count" id="count"></div>
+      <input class="text-input header-search" id="main-search" type="search" placeholder="搜索动作" aria-label="搜索动作">
+      <button class="button primary" id="add-gif" type="button">导入 GIF</button>
+      <button class="button primary" id="add-from-library" type="button" hidden>从素材库添加</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <nav id="filters" aria-label="动作分类"></nav>
+    <main class="library"><div id="grid"></div></main>
+    <aside>
+      <div id="empty-editor">选择一个动作</div>
+      <div id="editor" hidden>
+        <img class="editor-preview" id="editor-preview" alt="动作预览">
+        <div class="editor-heading">
+          <div>
+            <h2 id="editor-name"></h2>
+            <div class="meta" id="editor-meta"></div>
+          </div>
+        </div>
+        <div class="buttons">
+          <button class="button primary" id="play" type="button">再次播放</button>
+          <button class="button" id="base" type="button">设为基础待机</button>
+          <button class="button" id="pin" type="button">固定状态</button>
+        </div>
+        <div class="section">
+          <div class="section-title">动作名称</div>
+          <input class="text-input" id="action-label" type="text" maxlength="24" aria-label="动作名称">
+          <div class="buttons" style="margin-top: 8px">
+            <button class="button primary" id="save-label" type="button">保存名称</button>
+            <button class="button" id="restore-label" type="button">恢复名称</button>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">使用场景</div>
+          <div class="mode-switches" id="mode-switches"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">图片</div>
+          <div class="buttons">
+            <button class="button" id="replace-media" type="button">替换素材</button>
+            <button class="button" id="restore-media" type="button">恢复原图</button>
+          </div>
+          <div class="meta" id="media-name" style="margin-top: 7px"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">对应文字</div>
+          <textarea id="lines" maxlength="1620" aria-label="对应文字" placeholder="一行一句；留空则不显示文字"></textarea>
+          <div class="buttons" style="margin-top: 8px">
+            <button class="button primary" id="save-lines" type="button">保存文字</button>
+            <button class="button" id="restore-lines" type="button">恢复原文</button>
+          </div>
+        </div>
+        <div class="section" id="delete-section" hidden>
+          <button class="button active" id="delete-action" type="button">删除此 GIF</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div class="modal" id="library-picker" hidden>
+    <section class="picker-dialog" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+      <div class="picker-heading">
+        <div>
+          <h2 id="picker-title">编辑动作清单</h2>
+          <div class="meta">勾选的素材会加入这个清单</div>
+        </div>
+        <div class="count" id="picker-count"></div>
+      </div>
+      <div class="picker-tools">
+        <input class="text-input" id="picker-search" type="search" placeholder="搜索素材" aria-label="搜索素材">
+      </div>
+      <div id="picker-grid"></div>
+      <div class="picker-footer">
+        <button class="button" id="picker-cancel" type="button">取消</button>
+        <button class="button primary" id="picker-save" type="button">保存清单</button>
+      </div>
+    </section>
+  </div>
+  <div id="toast" role="status"></div>
+
+  <script>
+    const groups = [
+      ['library', '素材库'],
+      ['quiet', '安静模式'],
+      ['daily', '日常'],
+      ['office', '办公'],
+      ['interaction', '戳一戳互动'],
+      ['dragging', '拖动中'],
+      ['drop', '放下后']
+    ];
+    const modeNames = {
+      quiet: '安静',
+      daily: '日常',
+      office: '办公',
+      interaction: '互动',
+      dragging: '拖动中',
+      drop: '放下后'
+    };
+
+    const filters = document.getElementById('filters');
+    const grid = document.getElementById('grid');
+    const editor = document.getElementById('editor');
+    const emptyEditor = document.getElementById('empty-editor');
+    const toast = document.getElementById('toast');
+    const linesInput = document.getElementById('lines');
+    const mainSearch = document.getElementById('main-search');
+    const picker = document.getElementById('library-picker');
+    const pickerSearch = document.getElementById('picker-search');
+    const pickerGrid = document.getElementById('picker-grid');
+    let actions = [];
+    let activeGroup = 'library';
+    let selectedId = null;
+    let toastTimer = null;
+    let pickerSelections = new Set();
+
+    function selectedAction() {
+      return actions.find((action) => action.id === selectedId) || null;
+    }
+
+    function groupContains(action, group) {
+      if (group === 'library') return true;
+      if (group === 'interaction') return Boolean(action.interaction);
+      if (group === 'dragging') return Boolean(action.dragging);
+      if (group === 'drop') return Boolean(action.dropReaction);
+      return Boolean(action.modes?.includes(group));
+    }
+
+    async function setMembership(actionId, group, enabled) {
+      if (group === 'interaction') return window.companionAPI.setActionInteraction(actionId, enabled);
+      if (group === 'dragging' || group === 'drop') {
+        return window.companionAPI.setActionDragRole(actionId, group, enabled);
+      }
+      return window.companionAPI.setActionMode(actionId, group, enabled);
+    }
+
+    function matchesSearch(action, query) {
+      const haystack = `${action.label} ${action.sourceName || ''} ${action.originalName || ''}`.toLocaleLowerCase('zh-CN');
+      return haystack.includes(query.trim().toLocaleLowerCase('zh-CN'));
+    }
+
+    function notify(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('visible');
+      toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 1400);
+    }
+
+    function renderFilters() {
+      filters.replaceChildren(...groups.flatMap(([id, label]) => {
+        const nodes = [];
+        const sectionName = id === 'quiet'
+          ? '使用模式'
+          : (id === 'interaction' ? '点击互动' : (id === 'dragging' ? '拖动交互' : null));
+        if (sectionName) {
+          const section = document.createElement('div');
+          section.className = 'nav-section-label';
+          section.textContent = sectionName;
+          nodes.push(section);
+        }
+        const count = actions.filter((action) => groupContains(action, id)).length;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `nav-button${activeGroup === id ? ' active' : ''}`;
+        if (id === 'dragging' || id === 'drop') button.classList.add('subgroup');
+        const name = document.createElement('span');
+        name.textContent = label;
+        const number = document.createElement('span');
+        number.className = 'nav-count';
+        number.textContent = count;
+        button.append(name, number);
+        button.addEventListener('click', () => {
+          activeGroup = id;
+          mainSearch.value = '';
+          render();
+        });
+        if (id !== 'library') {
+          button.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            button.classList.add('drop-target');
+          });
+          button.addEventListener('dragleave', () => button.classList.remove('drop-target'));
+          button.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            button.classList.remove('drop-target');
+            const actionId = event.dataTransfer.getData('text/plain');
+            if (!actionId) return;
+            await setMembership(actionId, id, true);
+            await reload();
+            notify(`已加入${label}`);
+          });
+        }
+        nodes.push(button);
+        return nodes;
+      }));
+    }
+
+    function renderGrid() {
+      const groupActions = actions.filter((action) => groupContains(action, activeGroup));
+      const visible = groupActions.filter((action) => matchesSearch(action, mainSearch.value));
+      document.getElementById('count').textContent = mainSearch.value.trim()
+        ? `${visible.length} / ${groupActions.length} 个动作`
+        : `${visible.length} 个动作`;
+      document.getElementById('add-gif').hidden = activeGroup !== 'library';
+      document.getElementById('add-from-library').hidden = activeGroup === 'library';
+      grid.replaceChildren(...visible.map((action) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.draggable = true;
+        card.className = `action-card${selectedId === action.id ? ' selected' : ''}${action.pinned ? ' pinned' : ''}${action.base ? ' base' : ''}`;
+        const image = document.createElement('img');
+        image.className = 'thumb';
+        image.src = action.previewUrl;
+        image.alt = '';
+        const name = document.createElement('span');
+        name.className = 'card-name';
+        name.textContent = action.label;
+        const meta = document.createElement('span');
+        meta.className = 'card-meta';
+        meta.textContent = action.added ? '用户素材' : (action.custom || action.customLines || action.customLabel ? '已自定义' : '内置素材');
+        const tags = document.createElement('span');
+        tags.className = 'mode-tags';
+        for (const mode of action.modes || []) {
+          const tag = document.createElement('span');
+          tag.className = 'mode-tag';
+          tag.textContent = modeNames[mode];
+          tags.append(tag);
+        }
+        if (action.interaction) {
+          const tag = document.createElement('span');
+          tag.className = 'mode-tag';
+          tag.textContent = modeNames.interaction;
+          tags.append(tag);
+        }
+        if (action.dragging) {
+          const tag = document.createElement('span');
+          tag.className = 'mode-tag';
+          tag.textContent = modeNames.dragging;
+          tags.append(tag);
+        }
+        if (action.dropReaction) {
+          const tag = document.createElement('span');
+          tag.className = 'mode-tag';
+          tag.textContent = modeNames.drop;
+          tags.append(tag);
+        }
+        card.append(image, name, meta, tags);
+        card.addEventListener('click', () => {
+          selectedId = action.id;
+          renderGrid();
+          renderEditor();
+          window.companionAPI.playAction(action.id);
+        });
+        card.addEventListener('dragstart', (event) => {
+          event.dataTransfer.setData('text/plain', action.id);
+          event.dataTransfer.effectAllowed = 'copy';
+          card.classList.add('dragging');
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        return card;
+      }));
+    }
+
+    function renderEditor() {
+      const action = selectedAction();
+      emptyEditor.hidden = Boolean(action);
+      editor.hidden = !action;
+      if (!action) return;
+      document.getElementById('editor-preview').src = action.previewUrl;
+      document.getElementById('editor-name').textContent = action.label;
+      document.getElementById('action-label').value = action.label;
+      document.getElementById('restore-label').disabled = !action.customLabel;
+      document.getElementById('editor-meta').textContent = action.added ? '用户 GIF' : '内置 GIF';
+      document.getElementById('media-name').textContent = action.custom
+        ? action.originalName
+        : (action.sourceName || '使用内置素材');
+      document.getElementById('restore-media').disabled = !action.custom || action.added;
+      document.getElementById('restore-lines').disabled = !action.customLines;
+      const pin = document.getElementById('pin');
+      pin.textContent = action.pinned ? '取消固定' : '固定状态';
+      pin.classList.toggle('active', action.pinned);
+      const base = document.getElementById('base');
+      base.textContent = action.base ? '当前基础待机' : '设为基础待机';
+      base.classList.toggle('active', action.base);
+      base.disabled = action.base;
+      linesInput.value = (action.lines || []).join('\n');
+      document.getElementById('delete-section').hidden = !action.added;
+      const switches = document.getElementById('mode-switches');
+      switches.replaceChildren(...groups.slice(1).map(([mode, label]) => {
+        const row = document.createElement('label');
+        row.className = 'mode-switch';
+        const name = document.createElement('span');
+        name.textContent = label;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = groupContains(action, mode);
+        input.addEventListener('change', async () => {
+          await setMembership(action.id, mode, input.checked);
+          await reload();
+          notify(input.checked ? `已加入${label}` : `已从${label}移除`);
+        });
+        row.append(name, input);
+        return row;
+      }));
+    }
+
+    function render() {
+      renderFilters();
+      renderGrid();
+      renderEditor();
+    }
+
+    function renderPicker() {
+      const visible = actions.filter((action) => matchesSearch(action, pickerSearch.value));
+      document.getElementById('picker-count').textContent = `已选 ${pickerSelections.size}`;
+      pickerGrid.replaceChildren(...visible.map((action) => {
+        const row = document.createElement('label');
+        row.className = 'picker-item';
+        const image = document.createElement('img');
+        image.src = action.previewUrl;
+        image.alt = '';
+        const name = document.createElement('span');
+        name.textContent = action.label;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = pickerSelections.has(action.id);
+        input.addEventListener('change', () => {
+          if (input.checked) pickerSelections.add(action.id);
+          else pickerSelections.delete(action.id);
+          document.getElementById('picker-count').textContent = `已选 ${pickerSelections.size}`;
+        });
+        row.append(image, name, input);
+        return row;
+      }));
+    }
+
+    function openPicker() {
+      if (activeGroup === 'library') return;
+      pickerSelections = new Set(actions.filter((action) => groupContains(action, activeGroup)).map((action) => action.id));
+      pickerSearch.value = '';
+      document.getElementById('picker-title').textContent = `编辑${groups.find(([id]) => id === activeGroup)?.[1] || '动作'}清单`;
+      picker.hidden = false;
+      renderPicker();
+      pickerGrid.scrollTop = 0;
+      pickerSearch.focus();
+    }
+
+    function closePicker() {
+      picker.hidden = true;
+    }
+
+    async function reload(preserveSelection = true) {
+      actions = await window.companionAPI.getActions();
+      if (!preserveSelection || !actions.some((action) => action.id === selectedId)) {
+        selectedId = actions[0]?.id || null;
+      }
+      render();
+    }
+
+    document.getElementById('play').addEventListener('click', () => {
+      const action = selectedAction();
+      if (action) window.companionAPI.playAction(action.id);
+    });
+    document.getElementById('add-gif').addEventListener('click', async () => {
+      const result = await window.companionAPI.addActions(null);
+      if (!result.changed) return;
+      selectedId = result.ids[0] || selectedId;
+      await reload();
+      notify(`已添加 ${result.ids.length} 个 GIF`);
+    });
+    document.getElementById('add-from-library').addEventListener('click', openPicker);
+    document.getElementById('picker-cancel').addEventListener('click', closePicker);
+    document.getElementById('picker-save').addEventListener('click', async () => {
+      const group = activeGroup;
+      await window.companionAPI.setActionMemberships(group, [...pickerSelections]);
+      closePicker();
+      await reload();
+      notify('动作清单已保存');
+    });
+    picker.addEventListener('click', (event) => {
+      if (event.target === picker) closePicker();
+    });
+    pickerSearch.addEventListener('input', renderPicker);
+    mainSearch.addEventListener('input', renderGrid);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !picker.hidden) closePicker();
+    });
+    document.getElementById('pin').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      await window.companionAPI.pinAction(action.pinned ? null : action.id);
+      await reload();
+      notify(action.pinned ? '已取消固定' : '状态已固定');
+    });
+    document.getElementById('base').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action || action.base) return;
+      await window.companionAPI.setBaseAction(action.id);
+      await reload();
+      notify('基础待机已更新');
+    });
+    document.getElementById('replace-media').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      const result = await window.companionAPI.replaceActionMedia(action.id);
+      if (result.changed) { await reload(); notify('素材已替换'); }
+    });
+    document.getElementById('save-label').addEventListener('click', async () => {
+      const action = selectedAction();
+      const label = document.getElementById('action-label').value.trim();
+      if (!action || !label) { notify('名称不能为空'); return; }
+      const result = await window.companionAPI.saveActionLabel(action.id, label);
+      if (result.changed) { await reload(); notify('名称已保存'); }
+    });
+    document.getElementById('restore-label').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      const result = await window.companionAPI.restoreActionLabel(action.id);
+      if (result.changed) { await reload(); notify('已恢复名称'); }
+    });
+    document.getElementById('restore-media').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      const result = await window.companionAPI.restoreActionMedia(action.id);
+      if (result.changed) { await reload(); notify('已恢复原图'); }
+    });
+    document.getElementById('save-lines').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      const lines = linesInput.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      await window.companionAPI.saveActionLines(action.id, lines);
+      await reload();
+      notify(lines.length ? '文字已保存' : '该动作已设为不说话');
+    });
+    document.getElementById('restore-lines').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action) return;
+      const result = await window.companionAPI.restoreActionLines(action.id);
+      if (result.changed) { await reload(); notify('已恢复原文'); }
+    });
+    document.getElementById('delete-action').addEventListener('click', async () => {
+      const action = selectedAction();
+      if (!action?.added) return;
+      const result = await window.companionAPI.deleteAction(action.id);
+      if (!result.changed) return;
+      selectedId = null;
+      await reload(false);
+      notify('GIF 已删除');
+    });
+
+    window.companionAPI.onActionsChanged(() => reload());
+    window.companionAPI.getCharacter().then((character) => {
+      document.title = `${character.name}动作管理`;
+    });
+    reload(false);
+  </script>
+</body>
+</html>

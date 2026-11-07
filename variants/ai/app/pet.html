@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>桌宠</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #stage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 300px;
+      height: 360px;
+      transform-origin: left top;
+      overflow: hidden;
+    }
+
+    #bubble {
+      position: absolute;
+      z-index: 4;
+      top: 12px;
+      left: 50%;
+      max-width: 276px;
+      min-height: 47px;
+      padding: 11px 16px;
+      border: 1px solid rgba(34, 42, 43, 0.16);
+      border-radius: 8px;
+      color: #263033;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 22px rgba(22, 32, 35, 0.15);
+      font-size: 17.5px;
+      line-height: 24px;
+      text-align: center;
+      opacity: 0;
+      transform: translate(-50%, -5px) scale(0.97);
+      transition: opacity 150ms ease, transform 180ms ease;
+      pointer-events: none;
+    }
+
+    #bubble::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -6px;
+      width: 10px;
+      height: 10px;
+      border-right: 1px solid rgba(34, 42, 43, 0.16);
+      border-bottom: 1px solid rgba(34, 42, 43, 0.16);
+      background: rgba(255, 255, 255, 0.96);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    #bubble.visible {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    #pet-zone {
+      position: absolute;
+      inset: 62px 0 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #pet-zone.dragging { cursor: grabbing; }
+
+    .pet-layer {
+      position: absolute;
+      left: 4px;
+      bottom: 0;
+      display: block;
+      width: 292px;
+      height: 292px;
+      object-fit: contain;
+      object-position: center bottom;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      filter: drop-shadow(0 4px 3px rgba(15, 25, 27, 0.14));
+      transform-origin: center bottom;
+      opacity: 0;
+      transform: translateY(2px) scale(0.988);
+      transition: opacity var(--fade-duration, 140ms) ease, transform var(--fade-duration, 140ms) ease;
+    }
+
+    .pet-layer.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    #toolbar {
+      position: absolute;
+      z-index: 6;
+      left: 50%;
+      top: var(--toolbar-top, 203px);
+      display: flex;
+      width: 184px;
+      height: 42px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 7px;
+      background: rgba(35, 43, 45, 0.68);
+      box-shadow: 0 4px 12px rgba(14, 20, 22, 0.14);
+      opacity: 0;
+      transform: translateX(-50%);
+      transition: opacity 140ms ease;
+    }
+
+    body:hover #toolbar,
+    #toolbar:focus-within,
+    body.pet-dragging #toolbar {
+      opacity: 1;
+    }
+
+    .tool-button {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      place-items: center;
+      color: #fff;
+      background: transparent;
+      font: inherit;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .tool-button:hover { background: rgba(255, 255, 255, 0.16); }
+    .tool-button:active { transform: translateY(1px); }
+    .tool-button.active { color: #f2c462; background: rgba(255, 255, 255, 0.12); }
+
+    #lyrics {
+      position: fixed;
+      z-index: 5;
+      left: 50%;
+      top: var(--lyrics-top, 203px);
+      bottom: auto;
+      display: none;
+      width: var(--lyrics-base-width, min(280px, calc(100vw - 12px)));
+      min-height: 76px;
+      padding: 9px 12px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 7px;
+      color: #f8fbfb;
+      background: rgba(30, 38, 40, 0.82);
+      box-shadow: 0 5px 16px rgba(14, 20, 22, 0.18);
+      text-align: center;
+      transform: translateX(-50%) scale(var(--lyrics-scale, 1));
+      transform-origin: top center;
+      pointer-events: none;
+    }
+
+    #lyrics.visible { display: grid; align-content: center; gap: 2px; }
+
+    #lyrics-title {
+      overflow: hidden;
+      color: rgba(233, 240, 241, 0.64);
+      font-size: 10px;
+      line-height: 14px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #lyrics-current {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 19px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #lyrics-next {
+      overflow: hidden;
+      color: rgba(233, 240, 241, 0.5);
+      font-size: 11px;
+      line-height: 16px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <main id="stage" aria-label="桌宠">
+    <div id="bubble" role="status" aria-live="polite"></div>
+    <div id="pet-zone">
+      <img class="pet-layer" id="pet-a" alt="桌宠角色" draggable="false">
+      <img class="pet-layer" id="pet-b" alt="" aria-hidden="true" draggable="false">
+    </div>
+  </main>
+  <div id="lyrics" role="status" aria-live="polite">
+    <div id="lyrics-title"></div>
+    <div id="lyrics-current"></div>
+    <div id="lyrics-next"></div>
+  </div>
+  <div id="toolbar" aria-label="快捷操作">
+    <button class="tool-button" id="greet-button" type="button" title="打招呼" aria-label="打招呼">♡</button>
+    <button class="tool-button" id="chat-button" type="button" title="和她说话" aria-label="和她说话" hidden>…</button>
+    <button class="tool-button" id="quiet-button" type="button" title="安静模式" aria-label="安静模式">☾</button>
+    <button class="tool-button" id="manager-button" type="button" title="动作管理" aria-label="动作管理">▦</button>
+    <button class="tool-button" id="settings-button" type="button" title="设置" aria-label="设置">⚙</button>
+  </div>
+  <script>
+    const stage = document.getElementById('stage');
+    const petZone = document.getElementById('pet-zone');
+    const petImages = [document.getElementById('pet-a'), document.getElementById('pet-b')];
+    const bubble = document.getElementById('bubble');
+    const quietButton = document.getElementById('quiet-button');
+    const chatButton = document.getElementById('chat-button');
+    const lyricsPanel = document.getElementById('lyrics');
+    const lyricsTitle = document.getElementById('lyrics-title');
+    const lyricsCurrent = document.getElementById('lyrics-current');
+    const lyricsNext = document.getElementById('lyrics-next');
+
+    document.body.classList.toggle('platform-windows', window.companionAPI.platform === 'win32');
+
+    let config = null;
+    let actions = [];
+    let actionMap = new Map();
+    let actionTimer = null;
+    let returnTimer = null;
+    let bubbleTimer = null;
+    let autoTimer = null;
+    let pointerState = null;
+    let holdTimer = null;
+    let tapTimer = null;
+    let lastTapAt = 0;
+    let isDragging = false;
+    let currentActionId = 'idle';
+    let activeImageIndex = 0;
+    let imageRevision = 0;
+    let playbackToken = 0;
+    let phase = 'boot';
+    let playOrder = 0;
+    const actionLastPlayed = new Map();
+
+    const frequencyRanges = {
+      frequent: [10000, 24000],
+      normal: [24000, 52000],
+      rare: [60000, 120000]
+    };
+
+    const randomItem = (items) => items[Math.floor(Math.random() * items.length)];
+
+    function currentMode() {
+      return ['quiet', 'daily', 'office'].includes(config?.activityMode)
+        ? config.activityMode
+        : 'daily';
+    }
+
+    function actionBehaviorId(action) {
+      return action?.behaviorId || action?.id || null;
+    }
+
+    function actionIdFor(reference) {
+      if (!reference) return null;
+      if (actionMap.has(reference)) return reference;
+      return actions.find((action) => actionBehaviorId(action) === reference)?.id || null;
+    }
+
+    function rememberAction(id) {
+      currentActionId = id;
+      playOrder += 1;
+      actionLastPlayed.set(id, playOrder);
+    }
+
+    function randomAction(pool, extraExcluded = []) {
+      const uniquePool = [...new Set(pool)].filter((id) => actionMap.has(id));
+      if (!uniquePool.length) return actionIdFor('idle');
+
+      const excluded = new Set(extraExcluded);
+      if (uniquePool.length > 1) excluded.add(currentActionId);
+      const available = uniquePool.filter((id) => !excluded.has(id));
+      const candidates = available.length ? available : uniquePool;
+      const unseen = candidates.filter((id) => !actionLastPlayed.has(id));
+      if (unseen.length) return randomItem(unseen);
+
+      const oldestOrder = Math.min(...candidates.map((id) => actionLastPlayed.get(id) || 0));
+      return randomItem(candidates.filter((id) => (actionLastPlayed.get(id) || 0) === oldestOrder));
+    }
+
+    function stableActionId() {
+      if (config?.pinnedAction && actionMap.has(config.pinnedAction)) return config.pinnedAction;
+      if (config?.baseAction && actionMap.has(config.baseAction)) return config.baseAction;
+      return actionIdFor('idle') || actions[0]?.id;
+    }
+
+    function clearEventTimers() {
+      window.clearTimeout(actionTimer);
+      window.clearTimeout(returnTimer);
+      window.clearTimeout(autoTimer);
+    }
+
+    function beginEvent(kind) {
+      playbackToken += 1;
+      clearEventTimers();
+      phase = kind;
+      return playbackToken;
+    }
+
+    let firstFrameSent = false;
+    function reportFirstFrame(error = null) {
+      if (firstFrameSent) return;
+      firstFrameSent = true;
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        window.companionAPI.rendererReady?.(error);
+      }));
+    }
+
+    function displayAction(action, transitionMs = 140, shouldRemember = true) {
+      if (!action) return;
+      currentActionId = action.id;
+      if (shouldRemember && action.id !== stableActionId()) rememberAction(action.id);
+
+      const nextIndex = 1 - activeImageIndex;
+      const revision = ++imageRevision;
+      const currentImage = petImages[activeImageIndex];
+      const nextImage = petImages[nextIndex];
+      const mediaUrl = action.mediaUrl || '';
+      if (!mediaUrl) return;
+      nextImage.style.setProperty('--fade-duration', `${transitionMs}ms`);
+      currentImage.style.setProperty('--fade-duration', `${transitionMs}ms`);
+      nextImage.classList.remove('visible');
+      nextImage.removeAttribute('src');
+      nextImage.onload = () => {
+        if (revision !== imageRevision) return;
+        window.requestAnimationFrame(() => {
+          if (revision !== imageRevision) return;
+          nextImage.classList.add('visible');
+          currentImage.classList.remove('visible');
+          activeImageIndex = nextIndex;
+          reportFirstFrame();
+        });
+      };
+      nextImage.onerror = () => {
+        if (revision === imageRevision) reportFirstFrame('角色图片加载失败，请检查角色素材或通过设置重试。');
+      };
+      window.requestAnimationFrame(() => { nextImage.src = mediaUrl; });
+    }
+
+    function returnToBase(token = playbackToken, immediate = false) {
+      if (token !== playbackToken) return;
+      window.clearTimeout(actionTimer);
+      window.clearTimeout(returnTimer);
+      phase = 'returning';
+      setBubble(null);
+      returnTimer = window.setTimeout(() => {
+        if (token !== playbackToken) return;
+        const action = actionMap.get(stableActionId());
+        if (!action) return;
+        displayAction(action, immediate ? 0 : 280, false);
+        phase = 'base';
+        scheduleAutoAction();
+      }, immediate ? 0 : 650);
+    }
+
+    function updateScale() {
+      if (!config) return;
+      const scale = Number(config.scale) || 1;
+      stage.style.transform = `scale(${scale})`;
+      stage.style.left = `${Math.max(0, (window.innerWidth - 300 * scale) / 2)}px`;
+      // Keep both panels attached to the pet, never to the native window bottom.
+      const petBottom = Math.round(360 * scale);
+      const lyricsScale = Math.min(1.6, Math.max(0.7, Number(config.lyricsScale) || 1));
+      document.documentElement.style.setProperty('--lyrics-scale', String(lyricsScale));
+      document.documentElement.style.setProperty('--lyrics-base-width', `${Math.min(280, Math.max(1, (window.innerWidth - 12) / lyricsScale))}px`);
+      const lyricsHeight = lyricsPanel.classList.contains('visible') ? Math.ceil(76 * lyricsScale) + 10 : 0;
+      document.documentElement.style.setProperty('--lyrics-top', `${petBottom + 5}px`);
+      document.documentElement.style.setProperty('--toolbar-top', `${petBottom + 5 + lyricsHeight}px`);
+    }
+
+    function updateBubbleScale() {
+      if (!config) return;
+      const scale = Math.min(1.25, Math.max(0.65, Number(config.bubbleScale) || 1));
+      bubble.style.maxWidth = `${Math.min(288, 276 * scale)}px`;
+      bubble.style.minHeight = `${47 * scale}px`;
+      bubble.style.padding = `${11 * scale}px ${16 * scale}px`;
+      bubble.style.fontSize = `${17.5 * scale}px`;
+      bubble.style.lineHeight = `${24 * scale}px`;
+    }
+
+    function setBubble(line, duration = 3200, force = false) {
+      window.clearTimeout(bubbleTimer);
+      if (!line || (!force && (!config?.speechEnabled || currentMode() === 'quiet'))) {
+        bubble.classList.remove('visible');
+        return;
+      }
+      bubble.textContent = line;
+      bubble.classList.add('visible');
+      bubbleTimer = window.setTimeout(() => bubble.classList.remove('visible'), duration);
+    }
+
+    function contextPool() {
+      const mode = currentMode();
+      return actions
+        .filter((action) => (
+          !action.interaction &&
+          !action.sequenceOnly &&
+          action.modes?.includes(mode) &&
+          !['drag', 'idle'].includes(actionBehaviorId(action)) &&
+          action.id !== stableActionId()
+        ))
+        .map((action) => action.id);
+    }
+
+    function playAction(id, forcedLine = null, options = {}) {
+      const resolvedId = id === 'random' ? randomAction(contextPool()) : actionIdFor(id);
+      const action = actionMap.get(resolvedId) || actionMap.get(actionIdFor('idle'));
+      if (!action) return;
+      const token = options.token || beginEvent(options.kind || 'manual');
+      if (token !== playbackToken) return;
+      phase = options.kind || phase;
+      window.clearTimeout(actionTimer);
+      displayAction(action, options.transitionMs ?? 140);
+
+      const line = forcedLine || (action.lines?.length ? randomItem(action.lines) : null);
+      const speechDuration = line ? Math.min(4600, 1300 + line.length * 150) : 0;
+      const duration = Math.max(action.playMs || 2800, speechDuration);
+      if (options.silent !== true) setBubble(line, duration + 350, options.forceSpeech === true);
+
+      if (!options.persistent && action.playMs > 0) {
+        actionTimer = window.setTimeout(() => {
+          if (token !== playbackToken) return;
+          if (options.onComplete) options.onComplete(token);
+          else returnToBase(token);
+        }, duration);
+      }
+      return token;
+    }
+
+    function canAutoPlay() {
+      return Boolean(config?.autoActionEnabled && !config.pinnedAction && !isDragging && phase === 'base');
+    }
+
+    function playAutoSequence() {
+      if (!canAutoPlay()) return;
+      const pool = contextPool();
+      if (!pool.length) {
+        scheduleAutoAction();
+        return;
+      }
+      const mode = currentMode();
+      const firstId = randomAction(pool);
+      const firstBehaviorId = actionBehaviorId(actionMap.get(firstId));
+      const token = beginEvent('auto');
+      if (mode === 'quiet' && firstBehaviorId === 'sleep' && actionIdFor('sleep-prep1')) {
+        playAction('sleep-prep1', null, {
+          token,
+          kind: 'auto',
+          onComplete: () => playAction('sleep-prep2', null, {
+            token,
+            kind: 'auto',
+            onComplete: () => playAction('sleep', null, { token, kind: 'auto' })
+          })
+        });
+        return;
+      }
+      if (mode === 'office' && firstBehaviorId === 'work') {
+        const followUp = randomAction(
+          ['typing', 'work-tired', 'work-doze'].map(actionIdFor).filter(Boolean),
+          [firstId]
+        );
+        playAction('work', null, {
+          token,
+          kind: 'auto',
+          onComplete: () => playAction(followUp, null, { token, kind: 'auto' })
+        });
+        return;
+      }
+      playAction(firstId, null, { token, kind: 'auto' });
+    }
+
+    function scheduleAutoAction() {
+      window.clearTimeout(autoTimer);
+      if (!canAutoPlay()) return;
+      const [minimum, maximum] = frequencyRanges[config.actionFrequency] || frequencyRanges.normal;
+      const delay = (minimum + Math.random() * (maximum - minimum)) * (config.lowPowerMode ? 2.5 : 1);
+      autoTimer = window.setTimeout(() => {
+        playAutoSequence();
+      }, delay);
+    }
+
+    function applyConfig(nextConfig) {
+      const stableChanged = config && (
+        config.pinnedAction !== nextConfig.pinnedAction ||
+        config.baseAction !== nextConfig.baseAction ||
+        config.activityMode !== nextConfig.activityMode ||
+        config.appearanceId !== nextConfig.appearanceId
+      );
+      config = nextConfig;
+      if (!config.lyricsEnabled) lyricsPanel.classList.remove('visible');
+      updateScale();
+      updateBubbleScale();
+      quietButton.classList.toggle('active', currentMode() === 'quiet');
+      quietButton.title = currentMode() === 'quiet' ? '返回之前的模式' : '安静模式';
+      if (currentMode() === 'quiet' || !config.speechEnabled) setBubble(null);
+      if (stableChanged && actionMap.size) {
+        const token = beginEvent('returning');
+        returnToBase(token, true);
+      } else if (phase === 'base') {
+        scheduleAutoAction();
+      }
+    }
+
+    function interactionPool() {
+      const pool = actions.filter((action) => action.interaction).map((action) => action.id);
+      return pool.length
+        ? pool
+        : ['pat', 'head-rub', 'cheek-squeeze', 'nose-poke'].map(actionIdFor).filter(Boolean);
+    }
+
+    function draggingPool() {
+      return actions.filter((action) => action.dragging).map((action) => action.id);
+    }
+
+    function dropReactionPool() {
+      return actions.filter((action) => action.dropReaction).map((action) => action.id);
+    }
+
+    function singleTap(localY) {
+      playAction(randomAction(interactionPool()), null, { kind: 'interaction' });
+    }
+
+    function doubleTap() {
+      const preferred = ['heart', 'gift', 'rose', 'celebrate']
+        .map(actionIdFor)
+        .filter((id) => actionMap.get(id)?.interaction);
+      playAction(randomAction(preferred.length ? preferred : interactionPool()), null, { kind: 'interaction' });
+    }
+
+    function handleTap(localY) {
+      const now = Date.now();
+      if (now - lastTapAt < 310) {
+        window.clearTimeout(tapTimer);
+        lastTapAt = 0;
+        doubleTap();
+        return;
+      }
+      lastTapAt = now;
+      tapTimer = window.setTimeout(() => {
+        lastTapAt = 0;
+        singleTap(localY);
+      }, 250);
+    }
+
+    petZone.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      pointerState = {
+        pointerId: event.pointerId,
+        screenX: event.screenX,
+        screenY: event.screenY,
+        localY: event.clientY - petZone.getBoundingClientRect().top,
+        moved: false,
+        reacted: false,
+        held: false
+      };
+      window.clearTimeout(holdTimer);
+      window.clearTimeout(autoTimer);
+      holdTimer = window.setTimeout(() => {
+        if (!pointerState || pointerState.moved) return;
+        pointerState.held = true;
+        playAction(randomAction(interactionPool()), null, { kind: 'interaction' });
+      }, 560);
+      petZone.setPointerCapture(event.pointerId);
+      window.companionAPI.dragStart();
+    });
+
+    petZone.addEventListener('pointermove', (event) => {
+      if (!pointerState || pointerState.pointerId !== event.pointerId) return;
+      if ((event.buttons & 1) === 0) {
+        endPointer(event);
+        return;
+      }
+      const distance = Math.hypot(event.screenX - pointerState.screenX, event.screenY - pointerState.screenY);
+      if (distance > 4) pointerState.moved = true;
+      if (!pointerState.moved) return;
+      window.clearTimeout(holdTimer);
+      const dragJustStarted = !isDragging;
+      isDragging = true;
+      window.clearTimeout(autoTimer);
+      petZone.classList.add('dragging');
+      document.body.classList.add('pet-dragging');
+      if (dragJustStarted || window.companionAPI.platform !== 'win32') {
+        window.companionAPI.dragMove();
+      }
+      if (!pointerState.reacted) {
+        pointerState.reacted = true;
+        const pool = draggingPool();
+        if (pool.length) playAction(randomAction(pool), null, { persistent: true, kind: 'drag' });
+      }
+    });
+
+    function endPointer(event) {
+      if (!pointerState || pointerState.pointerId !== event.pointerId) return;
+      const { moved, localY, held } = pointerState;
+      pointerState = null;
+      window.clearTimeout(holdTimer);
+      isDragging = false;
+      petZone.classList.remove('dragging');
+      document.body.classList.remove('pet-dragging');
+      window.companionAPI.dragEnd();
+      if (moved) {
+        const token = beginEvent('interaction');
+        returnTimer = window.setTimeout(() => {
+          if (token !== playbackToken) return;
+          const pool = dropReactionPool();
+          const actionId = pool.length ? randomAction(pool) : null;
+          if (actionId) playAction(actionId, null, { token, kind: 'interaction' });
+          else returnToBase(token);
+        }, 160);
+      } else if (!held) {
+        handleTap(localY);
+      }
+    }
+
+    petZone.addEventListener('pointerup', endPointer);
+    petZone.addEventListener('pointercancel', endPointer);
+    petZone.addEventListener('lostpointercapture', endPointer);
+    window.addEventListener('blur', () => {
+      if (pointerState) endPointer({ pointerId: pointerState.pointerId });
+    });
+    document.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      window.companionAPI.showContextMenu();
+    });
+
+    document.getElementById('greet-button').addEventListener('click', () => playAction('wave', null, { kind: 'interaction' }));
+    chatButton.addEventListener('click', () => window.companionAPI.openChat());
+    document.getElementById('manager-button').addEventListener('click', () => window.companionAPI.openActionManager());
+    document.getElementById('settings-button').addEventListener('click', () => window.companionAPI.openSettings());
+    quietButton.addEventListener('click', async () => {
+      const activityMode = currentMode() === 'quiet'
+        ? (config.previousActivityMode || 'daily')
+        : 'quiet';
+      applyConfig(await window.companionAPI.saveConfig({ activityMode }));
+    });
+
+    window.companionAPI.onConfigChanged(async (nextConfig) => {
+      if (config && config.appearanceId !== nextConfig.appearanceId) {
+        actions = await window.companionAPI.getActions();
+        actionMap = new Map(actions.map((action) => [action.id, action]));
+      }
+      applyConfig(nextConfig);
+    });
+    window.addEventListener('resize', updateScale);
+    window.companionAPI.onPlayAction(({ id, line, action, forceSpeech }) => {
+      if (action) actionMap.set(action.id, action);
+      playAction(id, line, { kind: 'manual', forceSpeech: Boolean(forceSpeech) });
+    });
+    window.companionAPI.onActionsChanged(async () => {
+      actions = await window.companionAPI.getActions();
+      actionMap = new Map(actions.map((action) => [action.id, action]));
+      if (phase === 'base' && !isDragging) {
+        const token = beginEvent('returning');
+        returnToBase(token, true);
+      }
+    });
+    window.companionAPI.onLyricsChanged((payload) => {
+      if (!payload?.visible || !config?.lyricsEnabled) {
+        lyricsPanel.classList.remove('visible');
+        updateScale();
+        return;
+      }
+      lyricsTitle.textContent = payload.title || '通用同步歌词';
+      lyricsCurrent.textContent = payload.current || '♪';
+      lyricsNext.textContent = payload.next || '';
+      lyricsPanel.classList.add('visible');
+      updateScale();
+    });
+    Promise.all([
+      window.companionAPI.getCharacter(),
+      window.companionAPI.getConfig(),
+      window.companionAPI.getActions()
+    ]).then(async ([character, initialConfig, loadedActions]) => {
+      document.title = character.productName;
+      stage.setAttribute('aria-label', character.productName);
+      petImages[0].alt = character.name;
+      chatButton.hidden = !character.features?.aiChat;
+      actions = loadedActions;
+      actionMap = new Map(actions.map((action) => [action.id, action]));
+      applyConfig(initialConfig);
+      if (initialConfig.firstLaunch) {
+        await window.companionAPI.saveConfig({ firstLaunch: false });
+        window.setTimeout(() => playAction(character.greetingAction, character.greeting, { kind: 'interaction' }), 280);
+      } else {
+        const token = beginEvent('returning');
+        returnToBase(token, true);
+      }
+    }).catch(error => reportFirstFrame(`桌宠初始化失败：${error?.message || error}`));
+  </script>
+</body>
+</html>
